@@ -1,0 +1,16 @@
+{
+  "name": "@ternakmatric/api-contracts",
+  "version": "0.1.0",
+  "private": true,
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "gen:openapi": "cargo run --manifest-path ../../backend/Cargo.toml -p api-server -- --export-openapi openapi/ternakmatric.v1.json",
+    "gen:ts": "npx openapi-typescript openapi/ternakmatric.v1.json -o generated/typescript/schema.d.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "openapi-typescript": "^7.4.0",
+    "typescript": "^5.7.0"
+  }
+}

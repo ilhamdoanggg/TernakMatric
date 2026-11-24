@@ -1,0 +1,4411 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "TernakMatric API",
+    "description": "Multi-tenant Smart Animal Production Management Platform API",
+    "license": {
+      "name": ""
+    },
+    "version": "1.0.0"
+  },
+  "paths": {
+    "//api/v1/auth/login": {
+      "post": {
+        "tags": [
+          "Tenant & Auth"
+        ],
+        "operationId": "login",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthTokenResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "//api/v1/auth/register": {
+      "post": {
+        "tags": [
+          "Tenant & Auth"
+        ],
+        "operationId": "register",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthTokenResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "//api/v1/batches": {
+      "get": {
+        "tags": [
+          "Production"
+        ],
+        "operationId": "list_batches",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BatchDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Production"
+        ],
+        "operationId": "create_batch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateBatchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "//api/v1/batches/{id}/fcr": {
+      "get": {
+        "tags": [
+          "Feeding & Inventory"
+        ],
+        "operationId": "get_batch_fcr",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Batch ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalculationResult_FcrSummary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "//api/v1/batches/{id}/financial-summary": {
+      "get": {
+        "tags": [
+          "Finance & HPP"
+        ],
+        "operationId": "get_batch_financial_summary",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Batch ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchFinancialSummaryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "//api/v1/batches/{id}/growth-samples": {
+      "post": {
+        "tags": [
+          "Production"
+        ],
+        "operationId": "record_growth_sample",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Batch ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateGrowthSampleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GrowthSampleResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "//api/v1/batches/{id}/health-records": {
+      "post": {
+        "tags": [
+          "Health & Biosecurity"
+        ],
+        "operationId": "record_health_event",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Batch ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateHealthRecordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthRecordDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "//api/v1/batches/{id}/mortalities": {
+      "post": {
+        "tags": [
+          "Health & Biosecurity"
+        ],
+        "operationId": "record_mortality",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Batch ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordMortalityRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MortalityResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "//api/v1/batches/{id}/outputs": {
+      "post": {
+        "tags": [
+          "Production"
+        ],
+        "operationId": "record_output",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Batch ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateOutputRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutputResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "//api/v1/batches/{id}/stock-movements": {
+      "post": {
+        "tags": [
+          "Production"
+        ],
+        "operationId": "record_stock_movement",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Batch ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StockMovementRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StockMovementResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "//api/v1/batches/{id}/tags": {
+      "get": {
+        "tags": [
+          "Production"
+        ],
+        "operationId": "list_individual_tags",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Batch ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/IndividualTagDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Production"
+        ],
+        "operationId": "register_individual_tag",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Batch ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterTagRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IndividualTagDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "//api/v1/batches/{id}/vaccinations": {
+      "get": {
+        "tags": [
+          "Health & Biosecurity"
+        ],
+        "operationId": "list_vaccinations",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Batch ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/VaccinationScheduleDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Health & Biosecurity"
+        ],
+        "operationId": "schedule_vaccination",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Batch ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateVaccinationScheduleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VaccinationScheduleDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "//api/v1/enclosures": {
+      "get": {
+        "tags": [
+          "Enclosure"
+        ],
+        "operationId": "list_enclosures",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EnclosureDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Enclosure"
+        ],
+        "operationId": "create_enclosure",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateEnclosureRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnclosureDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "//api/v1/enclosures/{id}": {
+      "get": {
+        "tags": [
+          "Enclosure"
+        ],
+        "operationId": "get_enclosure",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Enclosure ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnclosureDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "//api/v1/enclosures/{id}/calculate-capacity": {
+      "post": {
+        "tags": [
+          "Enclosure"
+        ],
+        "operationId": "calculate_capacity",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Enclosure ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalculateCapacityRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalculationResult_CapacityEvaluation"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "//api/v1/enclosures/{id}/environment": {
+      "get": {
+        "tags": [
+          "Environment"
+        ],
+        "operationId": "list_enclosure_readings",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Enclosure ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EnvironmentReadingDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "//api/v1/environment/iot-ingest": {
+      "post": {
+        "tags": [
+          "Environment"
+        ],
+        "operationId": "ingest_iot_reading",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IotIngestRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvironmentReadingDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "//api/v1/environment/metrics": {
+      "get": {
+        "tags": [
+          "Environment"
+        ],
+        "operationId": "list_metrics",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EnvironmentMetricDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "//api/v1/environment/readings": {
+      "post": {
+        "tags": [
+          "Environment"
+        ],
+        "operationId": "record_manual_reading",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateReadingRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvironmentReadingDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "//api/v1/farms": {
+      "get": {
+        "tags": [
+          "Tenant & Auth"
+        ],
+        "operationId": "list_farms",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FarmDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Tenant & Auth"
+        ],
+        "operationId": "create_farm",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateFarmRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FarmDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "//api/v1/farms/{id}/biosecurity-logs": {
+      "post": {
+        "tags": [
+          "Health & Biosecurity"
+        ],
+        "operationId": "record_biosecurity_log",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Farm ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateBiosecurityLogRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BiosecurityLogDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "//api/v1/feed-products": {
+      "get": {
+        "tags": [
+          "Feeding & Inventory"
+        ],
+        "operationId": "list_feed_products",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FeedProductDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Feeding & Inventory"
+        ],
+        "operationId": "create_feed_product",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateFeedProductRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedProductDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "//api/v1/feeding": {
+      "post": {
+        "tags": [
+          "Feeding & Inventory"
+        ],
+        "operationId": "record_feeding",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordFeedingRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedingRecordResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "//api/v1/finance/expenses": {
+      "post": {
+        "tags": [
+          "Finance & HPP"
+        ],
+        "operationId": "record_expense",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateExpenseRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpenseDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "//api/v1/finance/sales": {
+      "post": {
+        "tags": [
+          "Finance & HPP"
+        ],
+        "operationId": "record_sale",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSaleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SaleResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "//api/v1/inventory/transactions": {
+      "post": {
+        "tags": [
+          "Feeding & Inventory"
+        ],
+        "operationId": "create_inventory_transaction",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateInventoryTxRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InventoryTxResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "//api/v1/organizations": {
+      "get": {
+        "tags": [
+          "Tenant & Auth"
+        ],
+        "operationId": "list_organizations",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OrganizationDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Tenant & Auth"
+        ],
+        "operationId": "create_organization",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateOrganizationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrganizationDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "//api/v1/organizations/{id}/members": {
+      "get": {
+        "tags": [
+          "Tenant & Auth"
+        ],
+        "operationId": "list_members",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Organization ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MemberDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Tenant & Auth"
+        ],
+        "operationId": "add_member",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Organization ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InviteMemberRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "//api/v1/species": {
+      "get": {
+        "tags": [
+          "Species"
+        ],
+        "operationId": "list_species",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SpeciesDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Species"
+        ],
+        "operationId": "create_custom_species",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSpeciesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SpeciesDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "//api/v1/species/{id}/profiles": {
+      "get": {
+        "tags": [
+          "Species"
+        ],
+        "operationId": "list_profiles",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Species ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SpeciesProfileDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Species"
+        ],
+        "operationId": "create_profile",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Species ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateProfileRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SpeciesProfileDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "//api/v1/warehouses": {
+      "get": {
+        "tags": [
+          "Feeding & Inventory"
+        ],
+        "operationId": "list_warehouses",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WarehouseDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Feeding & Inventory"
+        ],
+        "operationId": "create_warehouse",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateWarehouseRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WarehouseDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sync/conflicts": {
+      "get": {
+        "tags": [
+          "Offline Sync"
+        ],
+        "operationId": "sync_conflicts",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SyncConflictRecord"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sync/devices": {
+      "post": {
+        "tags": [
+          "Offline Sync"
+        ],
+        "operationId": "sync_register_device",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterDeviceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegisterDeviceResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sync/pull": {
+      "get": {
+        "tags": [
+          "Offline Sync"
+        ],
+        "operationId": "sync_pull",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncPullResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sync/push": {
+      "post": {
+        "tags": [
+          "Offline Sync"
+        ],
+        "operationId": "sync_push",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SyncPushRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncPushResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "operationId": "health",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AuthTokenResponse": {
+        "type": "object",
+        "required": [
+          "access_token",
+          "user_id",
+          "email"
+        ],
+        "properties": {
+          "access_token": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "BatchDto": {
+        "type": "object",
+        "required": [
+          "id",
+          "organization_id",
+          "batch_code",
+          "species_id",
+          "start_date",
+          "initial_count",
+          "status",
+          "version",
+          "created_at"
+        ],
+        "properties": {
+          "batch_code": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "initial_avg_weight_g": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "initial_count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "organization_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "production_profile_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "species_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "start_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "status": {
+            "type": "string"
+          },
+          "target_end_date": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "BatchFinancialSummaryResponse": {
+        "type": "object",
+        "required": [
+          "batch_id",
+          "costs",
+          "pnl"
+        ],
+        "properties": {
+          "batch_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "costs": {
+            "$ref": "#/components/schemas/CostBreakdown"
+          },
+          "hpp_per_kg_live": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/CalculationResult_String"
+              }
+            ]
+          },
+          "pnl": {
+            "$ref": "#/components/schemas/CalculationResult_BatchPnlSummary"
+          }
+        }
+      },
+      "BatchPnlSummary": {
+        "type": "object",
+        "required": [
+          "total_cost",
+          "total_revenue",
+          "net_profit"
+        ],
+        "properties": {
+          "net_profit": {
+            "type": "string"
+          },
+          "profit_margin_percent": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "total_cost": {
+            "type": "string"
+          },
+          "total_revenue": {
+            "type": "string"
+          }
+        }
+      },
+      "BiosecurityLogDto": {
+        "type": "object",
+        "required": [
+          "id",
+          "farm_id",
+          "activity_type",
+          "performed_at",
+          "passed"
+        ],
+        "properties": {
+          "activity_type": {
+            "type": "string"
+          },
+          "farm_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "passed": {
+            "type": "boolean"
+          },
+          "performed_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "unit_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          }
+        }
+      },
+      "CalculateCapacityRequest": {
+        "type": "object",
+        "required": [
+          "requested_addition"
+        ],
+        "properties": {
+          "parameter_version": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "requested_addition": {
+            "type": "string"
+          }
+        }
+      },
+      "CalculationAssumptions": {
+        "type": "object",
+        "required": [
+          "is_estimate",
+          "notes"
+        ],
+        "properties": {
+          "is_estimate": {
+            "type": "boolean"
+          },
+          "last_sample_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "notes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "CalculationResult_BatchPnlSummary": {
+        "type": "object",
+        "required": [
+          "value",
+          "unit",
+          "formula_code",
+          "formula_version",
+          "calculated_at",
+          "assumptions"
+        ],
+        "properties": {
+          "assumptions": {
+            "$ref": "#/components/schemas/CalculationAssumptions"
+          },
+          "calculated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "formula_code": {
+            "type": "string"
+          },
+          "formula_version": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "parameter_version": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "unit": {
+            "type": "string"
+          },
+          "value": {
+            "type": "object",
+            "required": [
+              "total_cost",
+              "total_revenue",
+              "net_profit"
+            ],
+            "properties": {
+              "net_profit": {
+                "type": "string"
+              },
+              "profit_margin_percent": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "total_cost": {
+                "type": "string"
+              },
+              "total_revenue": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "CalculationResult_CapacityEvaluation": {
+        "type": "object",
+        "required": [
+          "value",
+          "unit",
+          "formula_code",
+          "formula_version",
+          "calculated_at",
+          "assumptions"
+        ],
+        "properties": {
+          "assumptions": {
+            "$ref": "#/components/schemas/CalculationAssumptions"
+          },
+          "calculated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "formula_code": {
+            "type": "string"
+          },
+          "formula_version": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "parameter_version": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "unit": {
+            "type": "string"
+          },
+          "value": {
+            "type": "object",
+            "required": [
+              "max_capacity",
+              "current_occupancy",
+              "requested_addition",
+              "projected_occupancy",
+              "utilization_percent",
+              "fits"
+            ],
+            "properties": {
+              "current_occupancy": {
+                "type": "string"
+              },
+              "fits": {
+                "type": "boolean"
+              },
+              "max_capacity": {
+                "type": "string"
+              },
+              "projected_occupancy": {
+                "type": "string"
+              },
+              "requested_addition": {
+                "type": "string"
+              },
+              "utilization_percent": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "CalculationResult_FcrSummary": {
+        "type": "object",
+        "required": [
+          "value",
+          "unit",
+          "formula_code",
+          "formula_version",
+          "calculated_at",
+          "assumptions"
+        ],
+        "properties": {
+          "assumptions": {
+            "$ref": "#/components/schemas/CalculationAssumptions"
+          },
+          "calculated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "formula_code": {
+            "type": "string"
+          },
+          "formula_version": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "parameter_version": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "unit": {
+            "type": "string"
+          },
+          "value": {
+            "type": "object",
+            "required": [
+              "fcr",
+              "biomass_gain_kg",
+              "feed_consumed_kg",
+              "mode"
+            ],
+            "properties": {
+              "biomass_gain_kg": {
+                "type": "string"
+              },
+              "fcr": {
+                "type": "string"
+              },
+              "feed_consumed_kg": {
+                "type": "string"
+              },
+              "mode": {
+                "$ref": "#/components/schemas/FcrMode"
+              }
+            }
+          }
+        }
+      },
+      "CalculationResult_String": {
+        "type": "object",
+        "required": [
+          "value",
+          "unit",
+          "formula_code",
+          "formula_version",
+          "calculated_at",
+          "assumptions"
+        ],
+        "properties": {
+          "assumptions": {
+            "$ref": "#/components/schemas/CalculationAssumptions"
+          },
+          "calculated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "formula_code": {
+            "type": "string"
+          },
+          "formula_version": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "parameter_version": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "unit": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
+        }
+      },
+      "CapacityEvaluation": {
+        "type": "object",
+        "required": [
+          "max_capacity",
+          "current_occupancy",
+          "requested_addition",
+          "projected_occupancy",
+          "utilization_percent",
+          "fits"
+        ],
+        "properties": {
+          "current_occupancy": {
+            "type": "string"
+          },
+          "fits": {
+            "type": "boolean"
+          },
+          "max_capacity": {
+            "type": "string"
+          },
+          "projected_occupancy": {
+            "type": "string"
+          },
+          "requested_addition": {
+            "type": "string"
+          },
+          "utilization_percent": {
+            "type": "string"
+          }
+        }
+      },
+      "CostBreakdown": {
+        "type": "object",
+        "required": [
+          "stock_cost",
+          "feed_cost",
+          "health_and_vaccine_cost",
+          "operational_cost"
+        ],
+        "properties": {
+          "feed_cost": {
+            "type": "string"
+          },
+          "health_and_vaccine_cost": {
+            "type": "string"
+          },
+          "operational_cost": {
+            "type": "string"
+          },
+          "stock_cost": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateBatchRequest": {
+        "type": "object",
+        "required": [
+          "batch_code",
+          "species_id",
+          "enclosure_id",
+          "start_date",
+          "initial_count",
+          "idempotency_key"
+        ],
+        "properties": {
+          "batch_code": {
+            "type": "string"
+          },
+          "enclosure_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "idempotency_key": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "initial_avg_weight_g": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "initial_count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "production_profile_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "species_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "start_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "target_end_date": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          }
+        }
+      },
+      "CreateBiosecurityLogRequest": {
+        "type": "object",
+        "required": [
+          "activity_type",
+          "performed_at"
+        ],
+        "properties": {
+          "activity_type": {
+            "type": "string"
+          },
+          "actor_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "agent_used": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "concentration": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "enclosure_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "passed": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "performed_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "CreateEnclosureRequest": {
+        "type": "object",
+        "required": [
+          "farm_id",
+          "code",
+          "name",
+          "unit_type_id"
+        ],
+        "properties": {
+          "area_m2": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "capacity_unit": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "capacity_value": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "code": {
+            "type": "string"
+          },
+          "dimensions": {},
+          "farm_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "geometry": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/EnclosureGeometry"
+              }
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "production_system_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "unit_type_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "volume_m3": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "CreateExpenseRequest": {
+        "type": "object",
+        "required": [
+          "expense_date",
+          "description",
+          "quantity",
+          "unit_cost"
+        ],
+        "properties": {
+          "batch_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "category_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "currency": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "description": {
+            "type": "string"
+          },
+          "expense_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "farm_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "quantity": {
+            "type": "string"
+          },
+          "unit_cost": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateFarmRequest": {
+        "type": "object",
+        "required": [
+          "code",
+          "name"
+        ],
+        "properties": {
+          "address": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "code": {
+            "type": "string"
+          },
+          "latitude": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "longitude": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateFeedProductRequest": {
+        "type": "object",
+        "required": [
+          "sku",
+          "name"
+        ],
+        "properties": {
+          "brand": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "default_unit": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "pellet_size_mm": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "protein_percent": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sku": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateGrowthSampleRequest": {
+        "type": "object",
+        "required": [
+          "sampled_at",
+          "sample_count",
+          "total_sample_weight_g"
+        ],
+        "properties": {
+          "average_length_cm": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "method": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sample_count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sampled_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "total_sample_weight_g": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateHealthRecordRequest": {
+        "type": "object",
+        "required": [
+          "observed_at",
+          "category",
+          "description"
+        ],
+        "properties": {
+          "category": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "dosage": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "observed_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "treatment_product": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "withdrawal_days": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "CreateInventoryTxRequest": {
+        "type": "object",
+        "required": [
+          "warehouse_id",
+          "transaction_type",
+          "occurred_at",
+          "idempotency_key",
+          "lines"
+        ],
+        "properties": {
+          "idempotency_key": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InventoryLineInput"
+            }
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "occurred_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "reference_code": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "transaction_type": {
+            "type": "string"
+          },
+          "warehouse_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "CreateOrganizationRequest": {
+        "type": "object",
+        "required": [
+          "name",
+          "slug"
+        ],
+        "properties": {
+          "default_currency": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "timezone": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "CreateOutputRequest": {
+        "type": "object",
+        "required": [
+          "output_type",
+          "quantity",
+          "unit",
+          "occurred_at",
+          "idempotency_key"
+        ],
+        "properties": {
+          "average_weight_g": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "grade": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "headcount_removed": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "idempotency_key": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "occurred_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "output_type": {
+            "$ref": "#/components/schemas/OutputType"
+          },
+          "quantity": {
+            "type": "string"
+          },
+          "unit": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateProfileRequest": {
+        "type": "object",
+        "required": [
+          "code",
+          "name",
+          "parameters"
+        ],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "parameters": {},
+          "production_system_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "version": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "CreateReadingRequest": {
+        "type": "object",
+        "required": [
+          "enclosure_id",
+          "metric_id",
+          "metric_value",
+          "unit",
+          "measured_at"
+        ],
+        "properties": {
+          "batch_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "enclosure_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "measured_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "metric_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "metric_value": {
+            "type": "string"
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "unit": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateSaleRequest": {
+        "type": "object",
+        "required": [
+          "batch_id",
+          "sale_date",
+          "items"
+        ],
+        "properties": {
+          "batch_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "buyer_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "currency": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SaleItemInput"
+            }
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sale_date": {
+            "type": "string",
+            "format": "date"
+          }
+        }
+      },
+      "CreateSpeciesRequest": {
+        "type": "object",
+        "required": [
+          "category",
+          "common_name",
+          "code"
+        ],
+        "properties": {
+          "category": {
+            "$ref": "#/components/schemas/SpeciesCategory"
+          },
+          "code": {
+            "type": "string"
+          },
+          "common_name": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "scientific_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "CreateVaccinationScheduleRequest": {
+        "type": "object",
+        "required": [
+          "vaccine_name",
+          "route",
+          "scheduled_date"
+        ],
+        "properties": {
+          "dosage": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "route": {
+            "type": "string"
+          },
+          "scheduled_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "target_disease": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "vaccine_name": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateWarehouseRequest": {
+        "type": "object",
+        "required": [
+          "code",
+          "name"
+        ],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "farm_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "DeviceId": {
+        "type": "string",
+        "format": "uuid"
+      },
+      "EnclosureDto": {
+        "type": "object",
+        "required": [
+          "id",
+          "organization_id",
+          "farm_id",
+          "code",
+          "name",
+          "unit_type_id",
+          "dimensions",
+          "status",
+          "version",
+          "created_at"
+        ],
+        "properties": {
+          "area_m2": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "capacity_unit": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "capacity_value": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "code": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "dimensions": {},
+          "farm_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "organization_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "production_system_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string"
+          },
+          "unit_type_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "volume_m3": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "EnclosureGeometry": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "length_m",
+              "width_m",
+              "shape"
+            ],
+            "properties": {
+              "average_depth_m": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "length_m": {
+                "type": "string"
+              },
+              "shape": {
+                "type": "string",
+                "enum": [
+                  "rectangle"
+                ]
+              },
+              "width_m": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "diameter_m",
+              "shape"
+            ],
+            "properties": {
+              "average_depth_m": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "diameter_m": {
+                "type": "string"
+              },
+              "shape": {
+                "type": "string",
+                "enum": [
+                  "circle"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "area_m2",
+              "shape"
+            ],
+            "properties": {
+              "area_m2": {
+                "type": "string"
+              },
+              "shape": {
+                "type": "string",
+                "enum": [
+                  "area_only"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "EnvironmentMetricDto": {
+        "type": "object",
+        "required": [
+          "id",
+          "code",
+          "name",
+          "default_unit",
+          "category"
+        ],
+        "properties": {
+          "category": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "default_unit": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "EnvironmentReadingDto": {
+        "type": "object",
+        "required": [
+          "id",
+          "unit_id",
+          "metric_id",
+          "metric_value",
+          "unit",
+          "measured_at",
+          "source"
+        ],
+        "properties": {
+          "batch_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "measured_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "metric_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "metric_value": {
+            "type": "string"
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "source": {
+            "type": "string"
+          },
+          "unit": {
+            "type": "string"
+          },
+          "unit_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "ErrorEnvelope": {
+        "type": "object",
+        "required": [
+          "code",
+          "message"
+        ],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "details": {},
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "ExpenseDto": {
+        "type": "object",
+        "required": [
+          "id",
+          "expense_date",
+          "description",
+          "quantity",
+          "unit_cost",
+          "total_amount",
+          "currency"
+        ],
+        "properties": {
+          "batch_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "expense_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "farm_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "quantity": {
+            "type": "string"
+          },
+          "total_amount": {
+            "type": "string"
+          },
+          "unit_cost": {
+            "type": "string"
+          }
+        }
+      },
+      "FarmDto": {
+        "type": "object",
+        "required": [
+          "id",
+          "organization_id",
+          "code",
+          "name",
+          "status",
+          "version",
+          "created_at"
+        ],
+        "properties": {
+          "address": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "code": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "latitude": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "longitude": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "organization_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "FcrMode": {
+        "type": "string",
+        "enum": [
+          "economic",
+          "biological"
+        ]
+      },
+      "FcrSummary": {
+        "type": "object",
+        "required": [
+          "fcr",
+          "biomass_gain_kg",
+          "feed_consumed_kg",
+          "mode"
+        ],
+        "properties": {
+          "biomass_gain_kg": {
+            "type": "string"
+          },
+          "fcr": {
+            "type": "string"
+          },
+          "feed_consumed_kg": {
+            "type": "string"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/FcrMode"
+          }
+        }
+      },
+      "FeedProductDto": {
+        "type": "object",
+        "required": [
+          "id",
+          "organization_id",
+          "sku",
+          "name",
+          "default_unit",
+          "is_active",
+          "created_at"
+        ],
+        "properties": {
+          "brand": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "default_unit": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "is_active": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          },
+          "organization_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "pellet_size_mm": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "protein_percent": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sku": {
+            "type": "string"
+          }
+        }
+      },
+      "FeedingRecordResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "batch_id",
+          "quantity_kg"
+        ],
+        "properties": {
+          "batch_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "quantity_kg": {
+            "type": "string"
+          }
+        }
+      },
+      "GrowthSampleResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "abw_g"
+        ],
+        "properties": {
+          "abw_g": {
+            "type": "string"
+          },
+          "adg_g_per_day": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "estimated_biomass_kg": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sgr_percent_per_day": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "HealthRecordDto": {
+        "type": "object",
+        "required": [
+          "id",
+          "batch_id",
+          "observed_at",
+          "category",
+          "description"
+        ],
+        "properties": {
+          "batch_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "category": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "dosage": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "observed_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "treatment_product": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "withdrawal_days": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "HealthResponse": {
+        "type": "object",
+        "required": [
+          "status",
+          "service"
+        ],
+        "properties": {
+          "service": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        }
+      },
+      "IndividualTagDto": {
+        "type": "object",
+        "required": [
+          "id",
+          "batch_id",
+          "tag_code",
+          "tag_type",
+          "sex",
+          "status",
+          "created_at"
+        ],
+        "properties": {
+          "batch_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "birth_date": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "initial_weight_g": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sex": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "tag_code": {
+            "type": "string"
+          },
+          "tag_type": {
+            "type": "string"
+          }
+        }
+      },
+      "InventoryLineInput": {
+        "type": "object",
+        "required": [
+          "feed_product_id",
+          "quantity",
+          "unit"
+        ],
+        "properties": {
+          "batch_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "expiry_date": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "feed_product_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "lot_code": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "quantity": {
+            "type": "string"
+          },
+          "unit": {
+            "type": "string"
+          },
+          "unit_cost": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "InventoryTxResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "transaction_type",
+          "lines_count"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "lines_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "transaction_type": {
+            "type": "string"
+          }
+        }
+      },
+      "InviteMemberRequest": {
+        "type": "object",
+        "required": [
+          "user_email",
+          "role_code"
+        ],
+        "properties": {
+          "role_code": {
+            "type": "string"
+          },
+          "user_email": {
+            "type": "string"
+          }
+        }
+      },
+      "IotIngestRequest": {
+        "type": "object",
+        "required": [
+          "enclosure_id",
+          "metric_code",
+          "metric_value",
+          "unit",
+          "measured_at"
+        ],
+        "properties": {
+          "enclosure_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "measured_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "metric_code": {
+            "type": "string"
+          },
+          "metric_value": {
+            "type": "string"
+          },
+          "unit": {
+            "type": "string"
+          }
+        }
+      },
+      "LoginRequest": {
+        "type": "object",
+        "required": [
+          "email",
+          "password"
+        ],
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          }
+        }
+      },
+      "MemberDto": {
+        "type": "object",
+        "required": [
+          "id",
+          "user_id",
+          "email",
+          "display_name",
+          "status",
+          "role_codes"
+        ],
+        "properties": {
+          "display_name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "role_codes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "MortalityResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "stock_movement_id",
+          "remaining_population"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "remaining_population": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "stock_movement_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "MovementType": {
+        "type": "string",
+        "enum": [
+          "initial_stock",
+          "additional_stock",
+          "birth",
+          "purchase",
+          "mortality",
+          "cull",
+          "harvest",
+          "egg_collection",
+          "milk_collection",
+          "transfer_in",
+          "transfer_out",
+          "sale",
+          "adjustment",
+          "reversal"
+        ]
+      },
+      "OrganizationDto": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "slug",
+          "timezone",
+          "default_currency",
+          "status",
+          "created_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "default_currency": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "timezone": {
+            "type": "string"
+          }
+        }
+      },
+      "OutboxChangeEvent": {
+        "type": "object",
+        "required": [
+          "cursor",
+          "aggregate_type",
+          "aggregate_id",
+          "event_type",
+          "payload",
+          "created_at"
+        ],
+        "properties": {
+          "aggregate_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "aggregate_type": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "cursor": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "event_type": {
+            "type": "string"
+          },
+          "payload": {}
+        }
+      },
+      "OutputResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "batch_id",
+          "output_type",
+          "quantity",
+          "unit"
+        ],
+        "properties": {
+          "batch_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "output_type": {
+            "$ref": "#/components/schemas/OutputType"
+          },
+          "quantity": {
+            "type": "string"
+          },
+          "unit": {
+            "type": "string"
+          }
+        }
+      },
+      "OutputType": {
+        "type": "string",
+        "enum": [
+          "meat",
+          "egg",
+          "milk",
+          "fry",
+          "cull",
+          "offspring",
+          "other"
+        ]
+      },
+      "RecordFeedingRequest": {
+        "type": "object",
+        "required": [
+          "batch_id",
+          "enclosure_id",
+          "feed_product_id",
+          "fed_at",
+          "quantity",
+          "unit",
+          "idempotency_key"
+        ],
+        "properties": {
+          "batch_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "enclosure_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fed_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "feed_product_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "feeding_method": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "idempotency_key": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "lot_code": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "quantity": {
+            "type": "string"
+          },
+          "unit": {
+            "type": "string"
+          },
+          "unit_cost": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "warehouse_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          }
+        }
+      },
+      "RecordMortalityRequest": {
+        "type": "object",
+        "required": [
+          "quantity",
+          "occurred_at",
+          "idempotency_key"
+        ],
+        "properties": {
+          "idempotency_key": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "occurred_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "quantity": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "suspected_cause": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "RegisterDeviceRequest": {
+        "type": "object",
+        "required": [
+          "platform",
+          "device_public_id"
+        ],
+        "properties": {
+          "device_label": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "device_public_id": {
+            "type": "string"
+          },
+          "platform": {
+            "type": "string"
+          }
+        }
+      },
+      "RegisterDeviceResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "device_public_id",
+          "platform",
+          "created_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "device_public_id": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "platform": {
+            "type": "string"
+          }
+        }
+      },
+      "RegisterRequest": {
+        "type": "object",
+        "required": [
+          "email",
+          "display_name",
+          "password"
+        ],
+        "properties": {
+          "display_name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          }
+        }
+      },
+      "RegisterTagRequest": {
+        "type": "object",
+        "required": [
+          "tag_code"
+        ],
+        "properties": {
+          "birth_date": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "dam_tag_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "initial_weight_g": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sex": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sire_tag_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "tag_code": {
+            "type": "string"
+          },
+          "tag_type": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "SaleItemInput": {
+        "type": "object",
+        "required": [
+          "description",
+          "quantity",
+          "unit",
+          "unit_price"
+        ],
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "production_output_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "quantity": {
+            "type": "string"
+          },
+          "unit": {
+            "type": "string"
+          },
+          "unit_price": {
+            "type": "string"
+          }
+        }
+      },
+      "SaleResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "batch_id",
+          "total_amount",
+          "items_count"
+        ],
+        "properties": {
+          "batch_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "items_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "total_amount": {
+            "type": "string"
+          }
+        }
+      },
+      "SpeciesCategory": {
+        "type": "string",
+        "enum": [
+          "fish",
+          "crustacean",
+          "mollusk",
+          "poultry",
+          "mammal",
+          "reptile",
+          "insect",
+          "other"
+        ]
+      },
+      "SpeciesDto": {
+        "type": "object",
+        "required": [
+          "id",
+          "category",
+          "common_name",
+          "code",
+          "is_system",
+          "is_active",
+          "created_at"
+        ],
+        "properties": {
+          "category": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "common_name": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "is_active": {
+            "type": "boolean"
+          },
+          "is_system": {
+            "type": "boolean"
+          },
+          "organization_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "scientific_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "SpeciesProfileDto": {
+        "type": "object",
+        "required": [
+          "id",
+          "organization_id",
+          "species_id",
+          "code",
+          "name",
+          "parameters",
+          "version",
+          "is_active",
+          "valid_from"
+        ],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "is_active": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          },
+          "organization_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "parameters": {},
+          "production_system_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "species_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "valid_from": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "valid_until": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "StockMovementRequest": {
+        "type": "object",
+        "required": [
+          "movement_type",
+          "quantity_delta",
+          "occurred_at",
+          "idempotency_key"
+        ],
+        "properties": {
+          "idempotency_key": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "movement_type": {
+            "$ref": "#/components/schemas/MovementType"
+          },
+          "occurred_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "quantity_delta": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "StockMovementResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "batch_id",
+          "current_population"
+        ],
+        "properties": {
+          "batch_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "current_population": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "SyncCommand": {
+        "type": "object",
+        "required": [
+          "client_operation_id",
+          "entity_type",
+          "entity_id",
+          "operation_type",
+          "device_occurred_at",
+          "payload"
+        ],
+        "properties": {
+          "base_version": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "client_operation_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "device_occurred_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "entity_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "entity_type": {
+            "type": "string"
+          },
+          "operation_type": {
+            "$ref": "#/components/schemas/SyncOperationType"
+          },
+          "payload": {},
+          "server_current_version": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "SyncConflictRecord": {
+        "type": "object",
+        "required": [
+          "id",
+          "sync_operation_id",
+          "entity_type",
+          "entity_id",
+          "conflict_type",
+          "created_at"
+        ],
+        "properties": {
+          "client_snapshot": {},
+          "conflict_type": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "entity_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "entity_type": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "resolution": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "server_snapshot": {},
+          "sync_operation_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "SyncOperationType": {
+        "type": "string",
+        "enum": [
+          "create",
+          "update",
+          "delete"
+        ]
+      },
+      "SyncPullResponse": {
+        "type": "object",
+        "required": [
+          "events",
+          "next_cursor"
+        ],
+        "properties": {
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OutboxChangeEvent"
+            }
+          },
+          "next_cursor": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "SyncPushItemResult": {
+        "type": "object",
+        "required": [
+          "client_operation_id",
+          "entity_id",
+          "status",
+          "deduplicated"
+        ],
+        "properties": {
+          "client_operation_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "deduplicated": {
+            "type": "boolean"
+          },
+          "entity_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "message": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/SyncStatus"
+          }
+        }
+      },
+      "SyncPushRequest": {
+        "type": "object",
+        "required": [
+          "device_id",
+          "commands"
+        ],
+        "properties": {
+          "commands": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SyncCommand"
+            }
+          },
+          "device_id": {
+            "$ref": "#/components/schemas/DeviceId"
+          }
+        }
+      },
+      "SyncPushResponse": {
+        "type": "object",
+        "required": [
+          "results",
+          "latest_cursor"
+        ],
+        "properties": {
+          "latest_cursor": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SyncPushItemResult"
+            }
+          }
+        }
+      },
+      "SyncStatus": {
+        "type": "string",
+        "enum": [
+          "pending",
+          "applied",
+          "rejected",
+          "conflict"
+        ]
+      },
+      "VaccinationScheduleDto": {
+        "type": "object",
+        "required": [
+          "id",
+          "batch_id",
+          "vaccine_name",
+          "route",
+          "scheduled_date",
+          "status"
+        ],
+        "properties": {
+          "batch_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "completed_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "dosage": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "route": {
+            "type": "string"
+          },
+          "scheduled_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "status": {
+            "type": "string"
+          },
+          "target_disease": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "vaccine_name": {
+            "type": "string"
+          }
+        }
+      },
+      "WarehouseDto": {
+        "type": "object",
+        "required": [
+          "id",
+          "organization_id",
+          "code",
+          "name",
+          "created_at"
+        ],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "farm_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "organization_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      }
+    }
+  }
+}

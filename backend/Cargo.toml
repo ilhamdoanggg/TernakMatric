@@ -1,0 +1,55 @@
+[workspace]
+resolver = "2"
+members = [
+    "bins/api-server",
+    "bins/worker",
+    "crates/shared-kernel",
+    "crates/infra-db",
+    "crates/infra-auth",
+    "crates/mod-calculation",
+    "crates/mod-tenant",
+    "crates/mod-enclosure",
+    "crates/mod-species",
+    "crates/mod-production",
+    "crates/mod-feeding",
+    "crates/mod-environment",
+    "crates/mod-health",
+    "crates/mod-finance",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "Proprietary"
+authors = ["TernakMatric Engineering"]
+
+[workspace.dependencies]
+async-trait = "0.1"
+axum = "0.8"
+chrono = { version = "0.4", features = ["serde"] }
+jsonwebtoken = "9"
+rust_decimal = { version = "1", features = ["serde", "serde-with-str", "maths"] }
+rust_decimal_macros = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sqlx = { version = "0.8", features = ["runtime-tokio", "tls-rustls", "postgres", "uuid", "chrono", "rust_decimal", "json", "migrate"] }
+thiserror = "2"
+tokio = { version = "1", features = ["full"] }
+tower-http = { version = "0.6", features = ["cors", "trace"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+utoipa = { version = "5", features = ["axum_extras", "chrono", "uuid", "decimal"] }
+uuid = { version = "1", features = ["v4", "serde"] }
+
+shared-kernel = { path = "crates/shared-kernel" }
+infra-db = { path = "crates/infra-db" }
+infra-auth = { path = "crates/infra-auth" }
+mod-calculation = { path = "crates/mod-calculation" }
+mod-tenant = { path = "crates/mod-tenant" }
+mod-enclosure = { path = "crates/mod-enclosure" }
+mod-species = { path = "crates/mod-species" }
+mod-production = { path = "crates/mod-production" }
+mod-feeding = { path = "crates/mod-feeding" }
+mod-environment = { path = "crates/mod-environment" }
+mod-health = { path = "crates/mod-health" }
+mod-finance = { path = "crates/mod-finance" }

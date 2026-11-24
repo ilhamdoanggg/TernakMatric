@@ -1,0 +1,15 @@
+[package]
+name = "mod-health"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+axum.workspace = true
+chrono.workspace = true
+infra-auth.workspace = true
+infra-db.workspace = true
+serde.workspace = true
+shared-kernel.workspace = true
+sqlx.workspace = true
+utoipa.workspace = true
+uuid.workspace = true

@@ -1,0 +1,13 @@
+[package]
+name = "mod-calculation"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+chrono.workspace = true
+rust_decimal.workspace = true
+rust_decimal_macros.workspace = true
+serde.workspace = true
+shared-kernel.workspace = true
+thiserror.workspace = true
+utoipa.workspace = true
