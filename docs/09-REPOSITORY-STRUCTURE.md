@@ -38,6 +38,8 @@ TernakMatric/
 │   ├── 08-API-SPECIFICATION.md
 │   ├── 09-REPOSITORY-STRUCTURE.md    # file ini
 │   ├── 10-DATABASE-HARDENING.md
+│   ├── 11-MORTALITY-FAILURE-PREVENTION.md
+│   ├── 12-SUPPLY-AND-MARKET-LINKAGE.md
 │   └── decisions/
 │       ├── 001-tenant-boundary.md
 │       ├── 002-offline-sync.md

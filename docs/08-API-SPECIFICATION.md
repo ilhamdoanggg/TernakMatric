@@ -41,6 +41,8 @@ Seluruh endpoint REST berada di bawah prefix `/api/v1` (kecuali `/health` dan `/
 | `POST` | `/api/v1/organizations/{id}/members` | Undang / tambah staf & tetapkan role |
 | `GET` | `/api/v1/farms` | Daftar farm pada organisasi aktif |
 | `POST` | `/api/v1/farms` | Buat farm baru |
+| `PATCH` | `/api/v1/farms/{id}` | Perbarui data farm (mengisi `updated_at`/`updated_by` & `audit_logs`) |
+| `GET` | `/api/v1/audit-logs` | Riwayat perubahan entitas (`actor_user_id`, `before_data`, `after_data`, `occurred_at`) |
 
 ### `mod-enclosure` — Kandang, Kolam & Kapasitas
 | Method | Path | Deskripsi |
@@ -48,6 +50,7 @@ Seluruh endpoint REST berada di bawah prefix `/api/v1` (kecuali `/health` dan `/
 | `GET` | `/api/v1/enclosures` | Daftar enclosure (`production_units`) per farm |
 | `POST` | `/api/v1/enclosures` | Buat enclosure (kolam/kandang/cage/hive) beserta dimensi/kapasitas |
 | `GET` | `/api/v1/enclosures/{id}` | Detail enclosure + okupansi batch aktif saat ini |
+| `PATCH` | `/api/v1/enclosures/{id}` | Perbarui data/status enclosure (mengisi `updated_at`/`updated_by` & `audit_logs`) |
 | `POST` | `/api/v1/enclosures/{id}/calculate-capacity` | Hitung kapasitas & persentase okupansi dengan profil spesies |
 
 ### `mod-species` — Katalog Spesies & Profil Produksi Berversi
@@ -64,6 +67,7 @@ Seluruh endpoint REST berada di bawah prefix `/api/v1` (kecuali `/health` dan `/
 | `GET` | `/api/v1/batches` | Daftar batch/cohort produksi |
 | `POST` | `/api/v1/batches` | Buat batch baru + assignment enclosure awal (validasi kapasitas) |
 | `GET` | `/api/v1/batches/{id}` | Detail batch beserta populasi & estimasi biomassa terkini |
+| `PATCH` | `/api/v1/batches/{id}` | Perbarui target/status/catatan batch (mengisi `updated_at`/`updated_by` & `audit_logs`) |
 | `POST` | `/api/v1/batches/{id}/transfer` | Pindahkan batch ke enclosure lain dalam satu transaksi |
 | `POST` | `/api/v1/batches/{id}/stock-movements` | Catat pergerakan populasi (`additional_stock`, `birth`, `purchase`, `cull`, `adjustment`) |
 | `GET` | `/api/v1/batches/{id}/tags` | Daftar tag individu (`individual_tags`) pada batch |
@@ -95,6 +99,7 @@ Seluruh endpoint REST berada di bawah prefix `/api/v1` (kecuali `/health` dan `/
 | --- | --- | --- |
 | `GET` | `/api/v1/batches/{id}/vaccinations` | Daftar jadwal vaksinasi batch |
 | `POST` | `/api/v1/batches/{id}/vaccinations` | Buat jadwal vaksinasi baru |
+| `PATCH` | `/api/v1/vaccinations/{id}` | Perbarui status vaksinasi (mengisi `updated_at`/`updated_by` & `audit_logs`) |
 | `POST` | `/api/v1/batches/{id}/health-records` | Catat observasi penyakit atau pengobatan |
 | `POST` | `/api/v1/batches/{id}/mortalities` | Catat mortalitas (atomik mengurangi `population_balances`) |
 | `POST` | `/api/v1/farms/{id}/biosecurity-logs` | Catat log biosecurity (sanitasi, karantina, tamu/kendaraan) |

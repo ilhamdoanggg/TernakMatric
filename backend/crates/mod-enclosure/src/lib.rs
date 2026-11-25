@@ -3,7 +3,7 @@ use axum::routing::{get, post};
 use axum::{Json, Router};
 use chrono::{DateTime, Utc};
 use infra_auth::{ApiError, AppBackendState, AuthPrincipal, Permission};
-use infra_db::map_sqlx_err;
+use infra_db::{map_sqlx_err, AuditLogger};
 use mod_calculation::{
     compute_enclosure_geometry, evaluate_enclosure_capacity, CalculationResult, CapacityEvaluation,
     EnclosureGeometry,
@@ -29,6 +29,14 @@ pub struct CreateEnclosureRequest {
     pub volume_m3: Option<Decimal>,
 }
 
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct UpdateEnclosureRequest {
+    pub name: Option<String>,
+    pub capacity_value: Option<Decimal>,
+    pub capacity_unit: Option<String>,
+    pub status: Option<String>,
+}
+
 #[derive(Debug, Serialize, Deserialize, ToSchema, sqlx::FromRow)]
 pub struct EnclosureDto {
     pub id: Uuid,
@@ -46,6 +54,9 @@ pub struct EnclosureDto {
     pub status: String,
     pub version: i32,
     pub created_at: DateTime<Utc>,
+    pub created_by: Option<Uuid>,
+    pub updated_at: DateTime<Utc>,
+    pub updated_by: Option<Uuid>,
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
@@ -68,7 +79,8 @@ pub async fn list_enclosures<S: AppBackendState>(
     let rows: Vec<EnclosureDto> = sqlx::query_as(
         r#"
         SELECT id, organization_id, farm_id, code, name, unit_type_id, production_system_id,
-               dimensions, capacity_value, capacity_unit, area_m2, volume_m3, status, version, created_at
+               dimensions, capacity_value, capacity_unit, area_m2, volume_m3, status, version,
+               created_at, created_by, updated_at, updated_by
         FROM production_units
         WHERE organization_id = $1
         ORDER BY created_at DESC
@@ -118,11 +130,12 @@ pub async fn create_enclosure<S: AppBackendState>(
         r#"
         INSERT INTO production_units (
             organization_id, farm_id, code, name, unit_type_id, production_system_id,
-            dimensions, capacity_value, capacity_unit, area_m2, volume_m3
+            dimensions, capacity_value, capacity_unit, area_m2, volume_m3, created_by
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
         RETURNING id, organization_id, farm_id, code, name, unit_type_id, production_system_id,
-                  dimensions, capacity_value, capacity_unit, area_m2, volume_m3, status, version, created_at
+                  dimensions, capacity_value, capacity_unit, area_m2, volume_m3, status, version,
+                  created_at, created_by, updated_at, updated_by
         "#,
     )
     .bind(auth.organization_id.0)
@@ -136,9 +149,23 @@ pub async fn create_enclosure<S: AppBackendState>(
     .bind(&req.capacity_unit)
     .bind(derived_area)
     .bind(derived_volume)
+    .bind(auth.user_id.0)
     .fetch_one(&mut *tx)
     .await
     .map_err(|e| ApiError(map_sqlx_err(e)))?;
+
+    AuditLogger::record(
+        &mut tx,
+        Some(auth.organization_id),
+        Some(auth.user_id),
+        "enclosure.created",
+        "production_units",
+        Some(row.id),
+        None,
+        Some(serde_json::to_value(&row).unwrap_or_default()),
+    )
+    .await
+    .map_err(ApiError)?;
 
     tx.commit().await.map_err(|e| ApiError(map_sqlx_err(e)))?;
     Ok((axum::http::StatusCode::CREATED, Json(row)))
@@ -160,7 +187,8 @@ pub async fn get_enclosure<S: AppBackendState>(
     let row: EnclosureDto = sqlx::query_as(
         r#"
         SELECT id, organization_id, farm_id, code, name, unit_type_id, production_system_id,
-               dimensions, capacity_value, capacity_unit, area_m2, volume_m3, status, version, created_at
+               dimensions, capacity_value, capacity_unit, area_m2, volume_m3, status, version,
+               created_at, created_by, updated_at, updated_by
         FROM production_units
         WHERE organization_id = $1 AND id = $2
         "#,
@@ -172,6 +200,80 @@ pub async fn get_enclosure<S: AppBackendState>(
     .map_err(|e| ApiError(map_sqlx_err(e)))?;
     tx.commit().await.map_err(|e| ApiError(map_sqlx_err(e)))?;
     Ok(Json(row))
+}
+
+#[utoipa::path(
+    patch,
+    path = "/api/v1/enclosures/{id}",
+    params(("id" = Uuid, Path, description = "Enclosure ID")),
+    request_body = UpdateEnclosureRequest,
+    responses((status = 200, body = EnclosureDto)),
+    tag = "Enclosure"
+)]
+pub async fn update_enclosure<S: AppBackendState>(
+    State(state): State<S>,
+    auth: AuthPrincipal,
+    Path(id): Path<Uuid>,
+    Json(req): Json<UpdateEnclosureRequest>,
+) -> Result<Json<EnclosureDto>, ApiError> {
+    auth.require(Permission::FarmManage).map_err(ApiError)?;
+    let mut tx = auth.context().begin_tx(state.pool()).await.map_err(ApiError)?;
+
+    let before: EnclosureDto = sqlx::query_as(
+        r#"
+        SELECT id, organization_id, farm_id, code, name, unit_type_id, production_system_id,
+               dimensions, capacity_value, capacity_unit, area_m2, volume_m3, status, version,
+               created_at, created_by, updated_at, updated_by
+        FROM production_units WHERE organization_id = $1 AND id = $2 FOR UPDATE
+        "#,
+    )
+    .bind(auth.organization_id.0)
+    .bind(id)
+    .fetch_one(&mut *tx)
+    .await
+    .map_err(|e| ApiError(map_sqlx_err(e)))?;
+
+    let after: EnclosureDto = sqlx::query_as(
+        r#"
+        UPDATE production_units
+        SET name = COALESCE($3, name),
+            capacity_value = COALESCE($4, capacity_value),
+            capacity_unit = COALESCE($5, capacity_unit),
+            status = COALESCE($6, status),
+            version = version + 1,
+            updated_by = $7
+        WHERE organization_id = $1 AND id = $2
+        RETURNING id, organization_id, farm_id, code, name, unit_type_id, production_system_id,
+                  dimensions, capacity_value, capacity_unit, area_m2, volume_m3, status, version,
+                  created_at, created_by, updated_at, updated_by
+        "#,
+    )
+    .bind(auth.organization_id.0)
+    .bind(id)
+    .bind(req.name.as_deref().map(str::trim))
+    .bind(req.capacity_value)
+    .bind(&req.capacity_unit)
+    .bind(&req.status)
+    .bind(auth.user_id.0)
+    .fetch_one(&mut *tx)
+    .await
+    .map_err(|e| ApiError(map_sqlx_err(e)))?;
+
+    AuditLogger::record(
+        &mut tx,
+        Some(auth.organization_id),
+        Some(auth.user_id),
+        "enclosure.updated",
+        "production_units",
+        Some(id),
+        Some(serde_json::to_value(&before).unwrap_or_default()),
+        Some(serde_json::to_value(&after).unwrap_or_default()),
+    )
+    .await
+    .map_err(ApiError)?;
+
+    tx.commit().await.map_err(|e| ApiError(map_sqlx_err(e)))?;
+    Ok(Json(after))
 }
 
 #[utoipa::path(
@@ -189,7 +291,6 @@ pub async fn calculate_capacity<S: AppBackendState>(
     Json(req): Json<CalculateCapacityRequest>,
 ) -> Result<Json<CalculationResult<CapacityEvaluation>>, ApiError> {
     let mut tx = auth.context().begin_tx(state.pool()).await.map_err(ApiError)?;
-    // Row lock enclosure during multi-batch capacity check
     let cap_val: Option<Decimal> = sqlx::query_scalar(
         "SELECT capacity_value FROM production_units WHERE organization_id = $1 AND id = $2 FOR UPDATE",
     )
@@ -240,7 +341,10 @@ pub fn router<S: AppBackendState>() -> Router<S> {
             "/api/v1/enclosures",
             get(list_enclosures::<S>).post(create_enclosure::<S>),
         )
-        .route("/api/v1/enclosures/{id}", get(get_enclosure::<S>))
+        .route(
+            "/api/v1/enclosures/{id}",
+            get(get_enclosure::<S>).patch(update_enclosure::<S>),
+        )
         .route(
             "/api/v1/enclosures/{id}/calculate-capacity",
             post(calculate_capacity::<S>),
@@ -249,9 +353,9 @@ pub fn router<S: AppBackendState>() -> Router<S> {
 
 #[derive(OpenApi)]
 #[openapi(
-    paths(list_enclosures, create_enclosure, get_enclosure, calculate_capacity),
+    paths(list_enclosures, create_enclosure, get_enclosure, update_enclosure, calculate_capacity),
     components(schemas(
-        CreateEnclosureRequest, EnclosureDto, CalculateCapacityRequest,
+        CreateEnclosureRequest, UpdateEnclosureRequest, EnclosureDto, CalculateCapacityRequest,
         EnclosureGeometry, CapacityEvaluation, CalculationResult<CapacityEvaluation>
     ))
 )]

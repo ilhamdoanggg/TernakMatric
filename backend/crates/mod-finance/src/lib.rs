@@ -1,9 +1,9 @@
 use axum::extract::{Path, State};
 use axum::routing::{get, post};
 use axum::{Json, Router};
-use chrono::{NaiveDate, Utc};
+use chrono::{DateTime, NaiveDate, Utc};
 use infra_auth::{ApiError, AppBackendState, AuthPrincipal, Permission};
-use infra_db::map_sqlx_err;
+use infra_db::{map_sqlx_err, AuditLogger};
 use mod_calculation::{
     compute_batch_pnl, compute_hpp_per_kg_live, BatchPnlSummary, CalculationResult, CostBreakdown,
     HppBasis,
@@ -37,6 +37,10 @@ pub struct ExpenseDto {
     pub unit_cost: Decimal,
     pub total_amount: Decimal,
     pub currency: String,
+    pub created_at: DateTime<Utc>,
+    pub created_by: Option<Uuid>,
+    pub updated_at: DateTime<Utc>,
+    pub updated_by: Option<Uuid>,
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
@@ -64,6 +68,8 @@ pub struct SaleResponse {
     pub batch_id: Uuid,
     pub total_amount: Decimal,
     pub items_count: usize,
+    pub created_at: DateTime<Utc>,
+    pub created_by: Option<Uuid>,
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
@@ -97,7 +103,8 @@ pub async fn record_expense<S: AppBackendState>(
             description, quantity, unit_cost, total_amount, currency, created_by
         )
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-        RETURNING id, batch_id, farm_id, expense_date, description, quantity, unit_cost, total_amount, currency::text AS currency
+        RETURNING id, batch_id, farm_id, expense_date, description, quantity, unit_cost, total_amount,
+                  currency::text AS currency, created_at, created_by, updated_at, updated_by
         "#,
     )
     .bind(auth.organization_id.0)
@@ -114,6 +121,20 @@ pub async fn record_expense<S: AppBackendState>(
     .fetch_one(&mut *tx)
     .await
     .map_err(|e| ApiError(map_sqlx_err(e)))?;
+
+    AuditLogger::record(
+        &mut tx,
+        Some(auth.organization_id),
+        Some(auth.user_id),
+        "expense.recorded",
+        "expenses",
+        Some(row.id),
+        None,
+        Some(serde_json::to_value(&row).unwrap_or_default()),
+    )
+    .await
+    .map_err(ApiError)?;
+
     tx.commit().await.map_err(|e| ApiError(map_sqlx_err(e)))?;
     Ok((axum::http::StatusCode::CREATED, Json(row)))
 }
@@ -137,11 +158,11 @@ pub async fn record_sale<S: AppBackendState>(
         )));
     }
     let mut tx = auth.context().begin_tx(state.pool()).await.map_err(ApiError)?;
-    let sale_id: Uuid = sqlx::query_scalar(
+    let (sale_id, created_at, created_by): (Uuid, DateTime<Utc>, Option<Uuid>) = sqlx::query_as(
         r#"
-        INSERT INTO sales (organization_id, batch_id, sale_date, buyer_name, currency, notes)
-        VALUES ($1, $2, $3, $4, $5, $6)
-        RETURNING id
+        INSERT INTO sales (organization_id, batch_id, sale_date, buyer_name, currency, notes, created_by)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        RETURNING id, created_at, created_by
         "#,
     )
     .bind(auth.organization_id.0)
@@ -150,6 +171,7 @@ pub async fn record_sale<S: AppBackendState>(
     .bind(&req.buyer_name)
     .bind(req.currency.as_deref().unwrap_or("IDR"))
     .bind(&req.notes)
+    .bind(auth.user_id.0)
     .fetch_one(&mut *tx)
     .await
     .map_err(|e| ApiError(map_sqlx_err(e)))?;
@@ -179,6 +201,19 @@ pub async fn record_sale<S: AppBackendState>(
         .map_err(|e| ApiError(map_sqlx_err(e)))?;
     }
 
+    AuditLogger::record(
+        &mut tx,
+        Some(auth.organization_id),
+        Some(auth.user_id),
+        "sale.recorded",
+        "sales",
+        Some(sale_id),
+        None,
+        Some(serde_json::json!({ "batch_id": req.batch_id, "total_amount": total_amount, "items_count": req.items.len() })),
+    )
+    .await
+    .map_err(ApiError)?;
+
     tx.commit().await.map_err(|e| ApiError(map_sqlx_err(e)))?;
     Ok((
         axum::http::StatusCode::CREATED,
@@ -187,6 +222,8 @@ pub async fn record_sale<S: AppBackendState>(
             batch_id: req.batch_id,
             total_amount,
             items_count: req.items.len(),
+            created_at,
+            created_by,
         }),
     ))
 }

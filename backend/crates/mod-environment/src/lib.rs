@@ -3,7 +3,7 @@ use axum::routing::{get, post};
 use axum::{Json, Router};
 use chrono::{DateTime, Utc};
 use infra_auth::{ApiError, AppBackendState, AuthPrincipal, Permission};
-use infra_db::map_sqlx_err;
+use infra_db::{map_sqlx_err, AuditLogger};
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use utoipa::{OpenApi, ToSchema};
@@ -49,6 +49,10 @@ pub struct EnvironmentReadingDto {
     pub measured_at: DateTime<Utc>,
     pub source: String,
     pub notes: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub created_by: Option<Uuid>,
+    pub updated_at: DateTime<Utc>,
+    pub updated_by: Option<Uuid>,
 }
 
 #[utoipa::path(
@@ -85,7 +89,8 @@ pub async fn list_enclosure_readings<S: AppBackendState>(
     let mut tx = auth.context().begin_tx(state.pool()).await.map_err(ApiError)?;
     let rows: Vec<EnvironmentReadingDto> = sqlx::query_as(
         r#"
-        SELECT id, unit_id, batch_id, metric_id, metric_value, unit, measured_at, source, notes
+        SELECT id, unit_id, batch_id, metric_id, metric_value, unit, measured_at, source, notes,
+               created_at, created_by, updated_at, updated_by
         FROM environment_readings
         WHERE organization_id = $1 AND unit_id = $2
         ORDER BY measured_at DESC
@@ -121,7 +126,8 @@ pub async fn record_manual_reading<S: AppBackendState>(
             organization_id, unit_id, batch_id, metric_id, metric_value, unit, measured_at, source, notes, created_by
         )
         VALUES ($1, $2, $3, $4, $5, $6, $7, 'manual', $8, $9)
-        RETURNING id, unit_id, batch_id, metric_id, metric_value, unit, measured_at, source, notes
+        RETURNING id, unit_id, batch_id, metric_id, metric_value, unit, measured_at, source, notes,
+                  created_at, created_by, updated_at, updated_by
         "#,
     )
     .bind(auth.organization_id.0)
@@ -136,6 +142,20 @@ pub async fn record_manual_reading<S: AppBackendState>(
     .fetch_one(&mut *tx)
     .await
     .map_err(|e| ApiError(map_sqlx_err(e)))?;
+
+    AuditLogger::record(
+        &mut tx,
+        Some(auth.organization_id),
+        Some(auth.user_id),
+        "environment_reading.recorded",
+        "environment_readings",
+        Some(row.id),
+        None,
+        Some(serde_json::to_value(&row).unwrap_or_default()),
+    )
+    .await
+    .map_err(ApiError)?;
+
     tx.commit().await.map_err(|e| ApiError(map_sqlx_err(e)))?;
     Ok((axum::http::StatusCode::CREATED, Json(row)))
 }
@@ -163,10 +183,11 @@ pub async fn ingest_iot_reading<S: AppBackendState>(
     let row: EnvironmentReadingDto = sqlx::query_as(
         r#"
         INSERT INTO environment_readings (
-            organization_id, unit_id, metric_id, metric_value, unit, measured_at, source
+            organization_id, unit_id, metric_id, metric_value, unit, measured_at, source, created_by
         )
-        VALUES ($1, $2, $3, $4, $5, $6, 'iot_sensor')
-        RETURNING id, unit_id, batch_id, metric_id, metric_value, unit, measured_at, source, notes
+        VALUES ($1, $2, $3, $4, $5, $6, 'iot_sensor', $7)
+        RETURNING id, unit_id, batch_id, metric_id, metric_value, unit, measured_at, source, notes,
+                  created_at, created_by, updated_at, updated_by
         "#,
     )
     .bind(auth.organization_id.0)
@@ -175,6 +196,7 @@ pub async fn ingest_iot_reading<S: AppBackendState>(
     .bind(req.metric_value)
     .bind(req.unit.trim())
     .bind(req.measured_at)
+    .bind(auth.user_id.0)
     .fetch_one(&mut *tx)
     .await
     .map_err(|e| ApiError(map_sqlx_err(e)))?;

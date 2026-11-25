@@ -9,6 +9,29 @@
     "version": "1.0.0"
   },
   "paths": {
+    "//api/v1/audit-logs": {
+      "get": {
+        "tags": [
+          "Tenant & Auth"
+        ],
+        "operationId": "list_audit_logs",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AuditLogDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "//api/v1/auth/login": {
       "post": {
         "tags": [
@@ -128,6 +151,48 @@
         },
         "responses": {
           "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "//api/v1/batches/{id}": {
+      "patch": {
+        "tags": [
+          "Production"
+        ],
+        "operationId": "update_batch",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Batch ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateBatchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
             "description": "",
             "content": {
               "application/json": {
@@ -645,6 +710,46 @@
             }
           }
         }
+      },
+      "patch": {
+        "tags": [
+          "Enclosure"
+        ],
+        "operationId": "update_enclosure",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Enclosure ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateEnclosureRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnclosureDto"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "//api/v1/enclosures/{id}/calculate-capacity": {
@@ -846,6 +951,48 @@
         },
         "responses": {
           "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FarmDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "//api/v1/farms/{id}": {
+      "patch": {
+        "tags": [
+          "Tenant & Auth"
+        ],
+        "operationId": "update_farm",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Farm ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateFarmRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
             "description": "",
             "content": {
               "application/json": {
@@ -1323,6 +1470,48 @@
         }
       }
     },
+    "//api/v1/vaccinations/{id}": {
+      "patch": {
+        "tags": [
+          "Health & Biosecurity"
+        ],
+        "operationId": "update_vaccination_status",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Vaccination Schedule ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateVaccinationStatusRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VaccinationScheduleDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "//api/v1/warehouses": {
       "get": {
         "tags": [
@@ -1500,6 +1689,66 @@
   },
   "components": {
     "schemas": {
+      "AuditLogDto": {
+        "type": "object",
+        "required": [
+          "id",
+          "action",
+          "entity_type",
+          "occurred_at"
+        ],
+        "properties": {
+          "action": {
+            "type": "string"
+          },
+          "actor_display_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "actor_email": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "actor_user_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "after_data": {},
+          "before_data": {},
+          "entity_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "entity_type": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "occurred_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "organization_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          }
+        }
+      },
       "AuthTokenResponse": {
         "type": "object",
         "required": [
@@ -1531,7 +1780,8 @@
           "initial_count",
           "status",
           "version",
-          "created_at"
+          "created_at",
+          "updated_at"
         ],
         "properties": {
           "batch_code": {
@@ -1540,6 +1790,13 @@
           "created_at": {
             "type": "string",
             "format": "date-time"
+          },
+          "created_by": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
           },
           "id": {
             "type": "string",
@@ -1554,6 +1811,12 @@
           "initial_count": {
             "type": "integer",
             "format": "int32"
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "organization_id": {
             "type": "string",
@@ -1583,6 +1846,17 @@
               "null"
             ],
             "format": "date"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_by": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
           },
           "version": {
             "type": "integer",
@@ -1652,11 +1926,24 @@
           "farm_id",
           "activity_type",
           "performed_at",
-          "passed"
+          "passed",
+          "created_at",
+          "updated_at"
         ],
         "properties": {
           "activity_type": {
             "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "created_by": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
           },
           "farm_id": {
             "type": "string",
@@ -1674,6 +1961,17 @@
             "format": "date-time"
           },
           "unit_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_by": {
             "type": [
               "string",
               "null"
@@ -2741,7 +3039,8 @@
           "dimensions",
           "status",
           "version",
-          "created_at"
+          "created_at",
+          "updated_at"
         ],
         "properties": {
           "area_m2": {
@@ -2768,6 +3067,13 @@
           "created_at": {
             "type": "string",
             "format": "date-time"
+          },
+          "created_by": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
           },
           "dimensions": {},
           "farm_id": {
@@ -2797,6 +3103,17 @@
           },
           "unit_type_id": {
             "type": "string",
+            "format": "uuid"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_by": {
+            "type": [
+              "string",
+              "null"
+            ],
             "format": "uuid"
           },
           "version": {
@@ -2922,10 +3239,23 @@
           "metric_value",
           "unit",
           "measured_at",
-          "source"
+          "source",
+          "created_at",
+          "updated_at"
         ],
         "properties": {
           "batch_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "created_by": {
             "type": [
               "string",
               "null"
@@ -2962,6 +3292,17 @@
           "unit_id": {
             "type": "string",
             "format": "uuid"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_by": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
           }
         }
       },
@@ -2990,10 +3331,23 @@
           "quantity",
           "unit_cost",
           "total_amount",
-          "currency"
+          "currency",
+          "created_at",
+          "updated_at"
         ],
         "properties": {
           "batch_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "created_by": {
             "type": [
               "string",
               "null"
@@ -3029,6 +3383,17 @@
           },
           "unit_cost": {
             "type": "string"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_by": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
           }
         }
       },
@@ -3041,7 +3406,8 @@
           "name",
           "status",
           "version",
-          "created_at"
+          "created_at",
+          "updated_at"
         ],
         "properties": {
           "address": {
@@ -3056,6 +3422,13 @@
           "created_at": {
             "type": "string",
             "format": "date-time"
+          },
+          "created_by": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
           },
           "id": {
             "type": "string",
@@ -3082,6 +3455,17 @@
           },
           "status": {
             "type": "string"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_by": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
           },
           "version": {
             "type": "integer",
@@ -3128,7 +3512,8 @@
           "name",
           "default_unit",
           "is_active",
-          "created_at"
+          "created_at",
+          "updated_at"
         ],
         "properties": {
           "brand": {
@@ -3140,6 +3525,13 @@
           "created_at": {
             "type": "string",
             "format": "date-time"
+          },
+          "created_by": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
           },
           "default_unit": {
             "type": "string"
@@ -3172,6 +3564,17 @@
           },
           "sku": {
             "type": "string"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_by": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
           }
         }
       },
@@ -3180,11 +3583,23 @@
         "required": [
           "id",
           "batch_id",
-          "quantity_kg"
+          "quantity_kg",
+          "created_at"
         ],
         "properties": {
           "batch_id": {
             "type": "string",
+            "format": "uuid"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "created_by": {
+            "type": [
+              "string",
+              "null"
+            ],
             "format": "uuid"
           },
           "id": {
@@ -3200,7 +3615,8 @@
         "type": "object",
         "required": [
           "id",
-          "abw_g"
+          "abw_g",
+          "created_at"
         ],
         "properties": {
           "abw_g": {
@@ -3211,6 +3627,17 @@
               "string",
               "null"
             ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "created_by": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
           },
           "estimated_biomass_kg": {
             "type": [
@@ -3237,7 +3664,9 @@
           "batch_id",
           "observed_at",
           "category",
-          "description"
+          "description",
+          "created_at",
+          "updated_at"
         ],
         "properties": {
           "batch_id": {
@@ -3246,6 +3675,17 @@
           },
           "category": {
             "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "created_by": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
           },
           "description": {
             "type": "string"
@@ -3269,6 +3709,17 @@
               "string",
               "null"
             ]
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_by": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
           },
           "withdrawal_days": {
             "type": [
@@ -3303,7 +3754,8 @@
           "tag_type",
           "sex",
           "status",
-          "created_at"
+          "created_at",
+          "updated_at"
         ],
         "properties": {
           "batch_id": {
@@ -3320,6 +3772,13 @@
           "created_at": {
             "type": "string",
             "format": "date-time"
+          },
+          "created_by": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
           },
           "id": {
             "type": "string",
@@ -3342,6 +3801,17 @@
           },
           "tag_type": {
             "type": "string"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_by": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
           }
         }
       },
@@ -3396,9 +3866,21 @@
         "required": [
           "id",
           "transaction_type",
-          "lines_count"
+          "lines_count",
+          "created_at"
         ],
         "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "created_by": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
           "id": {
             "type": "string",
             "format": "uuid"
@@ -3512,9 +3994,21 @@
         "required": [
           "id",
           "stock_movement_id",
-          "remaining_population"
+          "remaining_population",
+          "created_at"
         ],
         "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "created_by": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
           "id": {
             "type": "string",
             "format": "uuid"
@@ -3557,12 +4051,20 @@
           "timezone",
           "default_currency",
           "status",
-          "created_at"
+          "created_at",
+          "updated_at"
         ],
         "properties": {
           "created_at": {
             "type": "string",
             "format": "date-time"
+          },
+          "created_by": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
           },
           "default_currency": {
             "type": "string"
@@ -3582,6 +4084,17 @@
           },
           "timezone": {
             "type": "string"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_by": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
           }
         }
       },
@@ -3624,11 +4137,23 @@
           "batch_id",
           "output_type",
           "quantity",
-          "unit"
+          "unit",
+          "created_at"
         ],
         "properties": {
           "batch_id": {
             "type": "string",
+            "format": "uuid"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "created_by": {
+            "type": [
+              "string",
+              "null"
+            ],
             "format": "uuid"
           },
           "id": {
@@ -3920,11 +4445,23 @@
           "id",
           "batch_id",
           "total_amount",
-          "items_count"
+          "items_count",
+          "created_at"
         ],
         "properties": {
           "batch_id": {
             "type": "string",
+            "format": "uuid"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "created_by": {
+            "type": [
+              "string",
+              "null"
+            ],
             "format": "uuid"
           },
           "id": {
@@ -3962,7 +4499,8 @@
           "code",
           "is_system",
           "is_active",
-          "created_at"
+          "created_at",
+          "updated_at"
         ],
         "properties": {
           "category": {
@@ -3977,6 +4515,13 @@
           "created_at": {
             "type": "string",
             "format": "date-time"
+          },
+          "created_by": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
           },
           "description": {
             "type": [
@@ -4006,6 +4551,17 @@
               "string",
               "null"
             ]
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_by": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
           }
         }
       },
@@ -4020,11 +4576,24 @@
           "parameters",
           "version",
           "is_active",
-          "valid_from"
+          "valid_from",
+          "created_at",
+          "updated_at"
         ],
         "properties": {
           "code": {
             "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "created_by": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
           },
           "id": {
             "type": "string",
@@ -4050,6 +4619,17 @@
           },
           "species_id": {
             "type": "string",
+            "format": "uuid"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_by": {
+            "type": [
+              "string",
+              "null"
+            ],
             "format": "uuid"
           },
           "valid_from": {
@@ -4106,11 +4686,23 @@
         "required": [
           "id",
           "batch_id",
-          "current_population"
+          "current_population",
+          "created_at"
         ],
         "properties": {
           "batch_id": {
             "type": "string",
+            "format": "uuid"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "created_by": {
+            "type": [
+              "string",
+              "null"
+            ],
             "format": "uuid"
           },
           "current_population": {
@@ -4316,6 +4908,118 @@
           "conflict"
         ]
       },
+      "UpdateBatchRequest": {
+        "type": "object",
+        "properties": {
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "target_end_date": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          }
+        }
+      },
+      "UpdateEnclosureRequest": {
+        "type": "object",
+        "properties": {
+          "capacity_unit": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "capacity_value": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "UpdateFarmRequest": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "latitude": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "longitude": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "UpdateVaccinationStatusRequest": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "completed_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string"
+          }
+        }
+      },
       "VaccinationScheduleDto": {
         "type": "object",
         "required": [
@@ -4324,7 +5028,9 @@
           "vaccine_name",
           "route",
           "scheduled_date",
-          "status"
+          "status",
+          "created_at",
+          "updated_at"
         ],
         "properties": {
           "batch_id": {
@@ -4337,6 +5043,17 @@
               "null"
             ],
             "format": "date-time"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "created_by": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
           },
           "dosage": {
             "type": [
@@ -4364,6 +5081,17 @@
               "null"
             ]
           },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_by": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
           "vaccine_name": {
             "type": "string"
           }
@@ -4376,7 +5104,8 @@
           "organization_id",
           "code",
           "name",
-          "created_at"
+          "created_at",
+          "updated_at"
         ],
         "properties": {
           "code": {
@@ -4385,6 +5114,13 @@
           "created_at": {
             "type": "string",
             "format": "date-time"
+          },
+          "created_by": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
           },
           "farm_id": {
             "type": [
@@ -4402,6 +5138,17 @@
           },
           "organization_id": {
             "type": "string",
+            "format": "uuid"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_by": {
+            "type": [
+              "string",
+              "null"
+            ],
             "format": "uuid"
           }
         }

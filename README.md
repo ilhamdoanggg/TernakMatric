@@ -4,7 +4,7 @@ Smart Animal Production Management Platform — SaaS multi-tenant untuk ikan, un
 
 ## Struktur Workspace
 
-- [`docs/`](docs/): Fondasi produk & arsitektur (`01-PROBLEM-DISCOVERY.md` s.d. `10-DATABASE-HARDENING.md` & [`docs/decisions/`](docs/decisions/))
+- [`docs/`](docs/): Fondasi produk & arsitektur (`01-PROBLEM-DISCOVERY.md` s.d. `12-SUPPLY-AND-MARKET-LINKAGE.md` & [`docs/decisions/`](docs/decisions/))
 - [`notes/`](notes/): Catatan perjalanan desain produk (`note-1.md` s.d. `note-3.md`)
 - [`data/`](data/): Referensi baseline schema PostgreSQL, seed data, ERD, dan data dictionary
 - [`backend/`](backend/): Rust Cargo Workspace (Axum + SQLx + Utoipa modular monolith, migrations, API server, background worker)

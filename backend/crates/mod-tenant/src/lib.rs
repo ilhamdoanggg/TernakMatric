@@ -1,9 +1,9 @@
-use axum::extract::{Path, State};
-use axum::routing::{get, post};
+use axum::extract::{Path, Query, State};
+use axum::routing::{get, patch, post};
 use axum::{Json, Router};
 use chrono::{DateTime, Utc};
 use infra_auth::{ApiError, AppBackendState, AuthPrincipal, AuthenticatedUser, Permission};
-use infra_db::{map_sqlx_err, AuditLogger};
+use infra_db::{map_sqlx_err, with_organization, with_user, AuditLogRow, AuditLogger};
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use shared_kernel::error::ErrorEnvelope;
@@ -48,6 +48,9 @@ pub struct OrganizationDto {
     pub default_currency: String,
     pub status: String,
     pub created_at: DateTime<Utc>,
+    pub created_by: Option<Uuid>,
+    pub updated_at: DateTime<Utc>,
+    pub updated_by: Option<Uuid>,
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
@@ -75,6 +78,15 @@ pub struct CreateFarmRequest {
     pub longitude: Option<Decimal>,
 }
 
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct UpdateFarmRequest {
+    pub name: Option<String>,
+    pub address: Option<String>,
+    pub latitude: Option<Decimal>,
+    pub longitude: Option<Decimal>,
+    pub status: Option<String>,
+}
+
 #[derive(Debug, Serialize, Deserialize, ToSchema, sqlx::FromRow)]
 pub struct FarmDto {
     pub id: Uuid,
@@ -87,6 +99,49 @@ pub struct FarmDto {
     pub status: String,
     pub version: i32,
     pub created_at: DateTime<Utc>,
+    pub created_by: Option<Uuid>,
+    pub updated_at: DateTime<Utc>,
+    pub updated_by: Option<Uuid>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct AuditLogQuery {
+    pub entity_type: Option<String>,
+    pub entity_id: Option<Uuid>,
+    pub limit: Option<i64>,
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct AuditLogDto {
+    pub id: Uuid,
+    pub organization_id: Option<Uuid>,
+    pub actor_user_id: Option<Uuid>,
+    pub actor_email: Option<String>,
+    pub actor_display_name: Option<String>,
+    pub action: String,
+    pub entity_type: String,
+    pub entity_id: Option<Uuid>,
+    pub before_data: Option<serde_json::Value>,
+    pub after_data: Option<serde_json::Value>,
+    pub occurred_at: DateTime<Utc>,
+}
+
+impl From<AuditLogRow> for AuditLogDto {
+    fn from(r: AuditLogRow) -> Self {
+        Self {
+            id: r.id,
+            organization_id: r.organization_id,
+            actor_user_id: r.actor_user_id,
+            actor_email: r.actor_email,
+            actor_display_name: r.actor_display_name,
+            action: r.action,
+            entity_type: r.entity_type,
+            entity_id: r.entity_id,
+            before_data: r.before_data,
+            after_data: r.after_data,
+            occurred_at: r.occurred_at,
+        }
+    }
 }
 
 #[utoipa::path(
@@ -180,7 +235,8 @@ pub async fn list_organizations<S: AppBackendState>(
 ) -> Result<Json<Vec<OrganizationDto>>, ApiError> {
     let rows: Vec<OrganizationDto> = sqlx::query_as(
         r#"
-        SELECT o.id, o.name, o.slug, o.timezone, o.default_currency::text AS default_currency, o.status, o.created_at
+        SELECT o.id, o.name, o.slug, o.timezone, o.default_currency::text AS default_currency,
+               o.status, o.created_at, o.created_by, o.updated_at, o.updated_by
         FROM organizations o
         JOIN organization_members m ON m.organization_id = o.id
         WHERE m.user_id = $1 AND m.status = 'active'
@@ -208,29 +264,35 @@ pub async fn create_organization<S: AppBackendState>(
     Json(req): Json<CreateOrganizationRequest>,
 ) -> Result<(axum::http::StatusCode, Json<OrganizationDto>), ApiError> {
     let mut tx = state.pool().begin().await.map_err(|e| ApiError(map_sqlx_err(e)))?;
+    with_user(&mut *tx, user.user_id)
+        .await
+        .map_err(|e| ApiError(map_sqlx_err(e)))?;
+
     let org: OrganizationDto = sqlx::query_as(
         r#"
-        INSERT INTO organizations (name, slug, timezone, default_currency)
-        VALUES ($1, $2, $3, $4)
-        RETURNING id, name, slug, timezone, default_currency::text AS default_currency, status, created_at
+        INSERT INTO organizations (name, slug, timezone, default_currency, created_by)
+        VALUES ($1, $2, $3, $4, $5)
+        RETURNING id, name, slug, timezone, default_currency::text AS default_currency,
+                  status, created_at, created_by, updated_at, updated_by
         "#,
     )
     .bind(req.name.trim())
     .bind(req.slug.trim().to_lowercase())
     .bind(req.timezone.as_deref().unwrap_or("Asia/Jakarta"))
     .bind(req.default_currency.as_deref().unwrap_or("IDR"))
+    .bind(user.user_id.0)
     .fetch_one(&mut *tx)
     .await
     .map_err(|e| ApiError(map_sqlx_err(e)))?;
 
-    infra_db::context::with_organization(&mut *tx, OrganizationId(org.id))
+    with_organization(&mut *tx, OrganizationId(org.id))
         .await
         .map_err(|e| ApiError(map_sqlx_err(e)))?;
 
     let member_id: Uuid = sqlx::query_scalar(
         r#"
-        INSERT INTO organization_members (organization_id, user_id, status, joined_at)
-        VALUES ($1, $2, 'active', now())
+        INSERT INTO organization_members (organization_id, user_id, status, joined_at, created_by)
+        VALUES ($1, $2, 'active', now(), $2)
         RETURNING id
         "#,
     )
@@ -340,8 +402,8 @@ pub async fn add_member<S: AppBackendState>(
 
     let member_id: Uuid = sqlx::query_scalar(
         r#"
-        INSERT INTO organization_members (organization_id, user_id, status, invited_by, joined_at)
-        VALUES ($1, $2, 'active', $3, now())
+        INSERT INTO organization_members (organization_id, user_id, status, invited_by, joined_at, created_by)
+        VALUES ($1, $2, 'active', $3, now(), $3)
         RETURNING id
         "#,
     )
@@ -365,6 +427,19 @@ pub async fn add_member<S: AppBackendState>(
     .execute(&mut *tx)
     .await
     .map_err(|e| ApiError(map_sqlx_err(e)))?;
+
+    AuditLogger::record(
+        &mut tx,
+        Some(auth.organization_id),
+        Some(auth.user_id),
+        "member.added",
+        "organization_members",
+        Some(member_id),
+        None,
+        Some(serde_json::json!({ "email": target_user.1, "role_code": req.role_code })),
+    )
+    .await
+    .map_err(ApiError)?;
 
     tx.commit().await.map_err(|e| ApiError(map_sqlx_err(e)))?;
 
@@ -394,7 +469,8 @@ pub async fn list_farms<S: AppBackendState>(
     let mut tx = auth.context().begin_tx(state.pool()).await.map_err(ApiError)?;
     let farms: Vec<FarmDto> = sqlx::query_as(
         r#"
-        SELECT id, organization_id, code, name, address, latitude, longitude, status, version, created_at
+        SELECT id, organization_id, code, name, address, latitude, longitude, status, version,
+               created_at, created_by, updated_at, updated_by
         FROM farms
         WHERE organization_id = $1
         ORDER BY created_at DESC
@@ -424,9 +500,10 @@ pub async fn create_farm<S: AppBackendState>(
     let mut tx = auth.context().begin_tx(state.pool()).await.map_err(ApiError)?;
     let farm: FarmDto = sqlx::query_as(
         r#"
-        INSERT INTO farms (organization_id, code, name, address, latitude, longitude)
-        VALUES ($1, $2, $3, $4, $5, $6)
-        RETURNING id, organization_id, code, name, address, latitude, longitude, status, version, created_at
+        INSERT INTO farms (organization_id, code, name, address, latitude, longitude, created_by)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        RETURNING id, organization_id, code, name, address, latitude, longitude, status, version,
+                  created_at, created_by, updated_at, updated_by
         "#,
     )
     .bind(auth.organization_id.0)
@@ -435,11 +512,126 @@ pub async fn create_farm<S: AppBackendState>(
     .bind(&req.address)
     .bind(req.latitude)
     .bind(req.longitude)
+    .bind(auth.user_id.0)
     .fetch_one(&mut *tx)
     .await
     .map_err(|e| ApiError(map_sqlx_err(e)))?;
+
+    AuditLogger::record(
+        &mut tx,
+        Some(auth.organization_id),
+        Some(auth.user_id),
+        "farm.created",
+        "farms",
+        Some(farm.id),
+        None,
+        Some(serde_json::to_value(&farm).unwrap_or_default()),
+    )
+    .await
+    .map_err(ApiError)?;
+
     tx.commit().await.map_err(|e| ApiError(map_sqlx_err(e)))?;
     Ok((axum::http::StatusCode::CREATED, Json(farm)))
+}
+
+#[utoipa::path(
+    patch,
+    path = "/api/v1/farms/{id}",
+    params(("id" = Uuid, Path, description = "Farm ID")),
+    request_body = UpdateFarmRequest,
+    responses((status = 200, body = FarmDto)),
+    tag = "Tenant & Auth"
+)]
+pub async fn update_farm<S: AppBackendState>(
+    State(state): State<S>,
+    auth: AuthPrincipal,
+    Path(id): Path<Uuid>,
+    Json(req): Json<UpdateFarmRequest>,
+) -> Result<Json<FarmDto>, ApiError> {
+    auth.require(Permission::FarmManage).map_err(ApiError)?;
+    let mut tx = auth.context().begin_tx(state.pool()).await.map_err(ApiError)?;
+
+    let before: FarmDto = sqlx::query_as(
+        r#"
+        SELECT id, organization_id, code, name, address, latitude, longitude, status, version,
+               created_at, created_by, updated_at, updated_by
+        FROM farms WHERE organization_id = $1 AND id = $2 FOR UPDATE
+        "#,
+    )
+    .bind(auth.organization_id.0)
+    .bind(id)
+    .fetch_one(&mut *tx)
+    .await
+    .map_err(|e| ApiError(map_sqlx_err(e)))?;
+
+    let after: FarmDto = sqlx::query_as(
+        r#"
+        UPDATE farms
+        SET name = COALESCE($3, name),
+            address = COALESCE($4, address),
+            latitude = COALESCE($5, latitude),
+            longitude = COALESCE($6, longitude),
+            status = COALESCE($7, status),
+            version = version + 1,
+            updated_by = $8
+        WHERE organization_id = $1 AND id = $2
+        RETURNING id, organization_id, code, name, address, latitude, longitude, status, version,
+                  created_at, created_by, updated_at, updated_by
+        "#,
+    )
+    .bind(auth.organization_id.0)
+    .bind(id)
+    .bind(req.name.as_deref().map(str::trim))
+    .bind(&req.address)
+    .bind(req.latitude)
+    .bind(req.longitude)
+    .bind(&req.status)
+    .bind(auth.user_id.0)
+    .fetch_one(&mut *tx)
+    .await
+    .map_err(|e| ApiError(map_sqlx_err(e)))?;
+
+    AuditLogger::record(
+        &mut tx,
+        Some(auth.organization_id),
+        Some(auth.user_id),
+        "farm.updated",
+        "farms",
+        Some(id),
+        Some(serde_json::to_value(&before).unwrap_or_default()),
+        Some(serde_json::to_value(&after).unwrap_or_default()),
+    )
+    .await
+    .map_err(ApiError)?;
+
+    tx.commit().await.map_err(|e| ApiError(map_sqlx_err(e)))?;
+    Ok(Json(after))
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/v1/audit-logs",
+    responses((status = 200, body = [AuditLogDto])),
+    tag = "Tenant & Auth"
+)]
+pub async fn list_audit_logs<S: AppBackendState>(
+    State(state): State<S>,
+    auth: AuthPrincipal,
+    Query(q): Query<AuditLogQuery>,
+) -> Result<Json<Vec<AuditLogDto>>, ApiError> {
+    auth.require(Permission::AnalyticsRead).map_err(ApiError)?;
+    let mut tx = auth.context().begin_tx(state.pool()).await.map_err(ApiError)?;
+    let rows = AuditLogger::list_for_org(
+        &mut tx,
+        auth.organization_id,
+        q.entity_type.as_deref(),
+        q.entity_id,
+        q.limit.unwrap_or(50),
+    )
+    .await
+    .map_err(ApiError)?;
+    tx.commit().await.map_err(|e| ApiError(map_sqlx_err(e)))?;
+    Ok(Json(rows.into_iter().map(AuditLogDto::from).collect()))
 }
 
 pub fn router<S: AppBackendState>() -> Router<S> {
@@ -455,15 +647,17 @@ pub fn router<S: AppBackendState>() -> Router<S> {
             get(list_members::<S>).post(add_member::<S>),
         )
         .route("/api/v1/farms", get(list_farms::<S>).post(create_farm::<S>))
+        .route("/api/v1/farms/{id}", patch(update_farm::<S>))
+        .route("/api/v1/audit-logs", get(list_audit_logs::<S>))
 }
 
 #[derive(OpenApi)]
 #[openapi(
-    paths(register, login, list_organizations, create_organization, list_members, add_member, list_farms, create_farm),
+    paths(register, login, list_organizations, create_organization, list_members, add_member, list_farms, create_farm, update_farm, list_audit_logs),
     components(schemas(
         RegisterRequest, LoginRequest, AuthTokenResponse,
         CreateOrganizationRequest, OrganizationDto, InviteMemberRequest, MemberDto,
-        CreateFarmRequest, FarmDto
+        CreateFarmRequest, UpdateFarmRequest, FarmDto, AuditLogDto
     ))
 )]
 pub struct TenantApi;

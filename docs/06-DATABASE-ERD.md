@@ -88,5 +88,6 @@ erDiagram
 | `2026112407_init_offline_sync.sql` | `devices`, `sync_operations`, `sync_conflicts`, `outbox_events` |
 | `2026112408_rls_triggers_hardening.sql` | Trigger cross-tenant, trigger *append-only ledger*, `set_updated_at`, dan kebijakan RLS seluruh tabel |
 | `2026112409_seed_catalogs.sql` | Data referensi global: `unit_types`, `production_systems`, `species` (8 kategori), `environment_metrics`, `plans`, `expense_categories`, `calculation_versions` (termasuk `SGR` & `HPP_LIVE_WEIGHT`) |
+| `2026112410_audit_actor_columns.sql` | Kolom `created_by`, `updated_at`, `updated_by` seragam + trigger otomatis `current_user_id()` (`SET LOCAL app.current_user_id`) |
 
 Detail kontrak tiap kolom tersedia pada [Schema SQL](../data/001_ternakmatric_schema.sql) dan [Data Dictionary](../data/DATA_DICTIONARY.md).

@@ -237,5 +237,7 @@ mod tests {
         assert!(json.contains("/api/v1/batches/{id}/vaccinations"));
         assert!(json.contains("/api/v1/batches/{id}/financial-summary"));
         assert!(json.contains("/api/v1/sync/push"));
+        assert!(json.contains("/api/v1/audit-logs"));
+        assert!(json.contains("/api/v1/farms/{id}"));
     }
 }

@@ -37,6 +37,8 @@ Sesuai desain domain (`species.category`), sistem mendukung 8 kategori tanpa *ha
 | **PS-06** | Jadwal vaksinasi, pengobatan, dan log biosecurity tersebar | Keterlambatan vaksin memicu mortalitas tinggi; kepatuhan biosecurity sulit diaudit | Modul kesehatan terdedikasi (`mod-health`): jadwal vaksin, pengobatan, mortalitas, dan log biosecurity |
 | **PS-07** | Biaya operasional tidak teralokasi ke batch; HPP per kg hidup tidak diketahui | Peternak menjual hasil panen tanpa tahu margin bersih sebenarnya | Alokasi biaya per batch/farm, perhitungan HPP per kg hidup/output, dan laporan Laba/Rugi |
 | **PS-08** | Lokasi kandang/kolam sering minim sinyal internet | Operator menunda input data ke sore/malam sehingga data rawan lupa atau keliru | Mobile app *offline-first* (SQLite lokal + *command queue* + sinkronisasi idempoten) |
+| **PS-09** | Sulit menjual hasil panen tepat waktu dengan harga layak | Ternak siap panen tertahan (*overfeeding* menaikkan FCR) atau terpaksa dijual di bawah HPP ke tengkulak tunggal | Proyeksi panen H-14, patokan HPP per kg hidup, *traceability* kesehatan, dan rancangan *Harvest Market / Offtake* ([DOC-12](12-SUPPLY-AND-MARKET-LINKAGE.md)) |
+| **PS-10** | Sulit menemukan suplai pakan, ransum, vitamin, dan obat yang konsisten | Stok habis mendadak memicu ganti pakan darurat, stres ternak, serta biaya beli eceran yang mahal | Proyeksi kebutuhan pakan, alert *safety stock*, evaluasi FCR per produk, dan rancangan *Supply Directory / Group Buying* ([DOC-12](12-SUPPLY-AND-MARKET-LINKAGE.md)) |
 
 ---
 
@@ -58,3 +60,5 @@ Sesuai desain domain (`species.category`), sistem mendukung 8 kategori tanpa *ha
 - **H1**: Peternak multi-komoditas bersedia mengganti catatan buku/Excel jika alur input harian di HP selesai dalam < 60 detik dan tetap berjalan saat offline.
 - **H2**: Kalkulasi otomatis FCR, ADG/SGR, dan HPP per kg hidup membantu peternak mendeteksi pemborosan pakan lebih awal dibanding rekap akhir siklus.
 - **H3**: Pemisahan hak akses (*Owner*, *Farm Manager*, *Operator*, *Finance*) mengurangi kecurangan stok pakan dan selisih populasi antar-shift.
+- **H4**: Estimasi panen H-14 dan transparansi HPP membantu peternak mengamankan pembeli sebelum ternak *overgrown* serta menjaga margin di atas titik impas.
+- **H5**: Pengingat *safety stock* pakan/vaksin dan akses direktori pemasok mengurangi *stockout* mendadak dan pergantian pakan darurat di tengah siklus.
