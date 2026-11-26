@@ -129,7 +129,11 @@ pub async fn list_warehouses<S: AppBackendState>(
     State(state): State<S>,
     auth: AuthPrincipal,
 ) -> Result<Json<Vec<WarehouseDto>>, ApiError> {
-    let mut tx = auth.context().begin_tx(state.pool()).await.map_err(ApiError)?;
+    let mut tx = auth
+        .context()
+        .begin_tx(state.pool())
+        .await
+        .map_err(ApiError)?;
     let rows: Vec<WarehouseDto> = sqlx::query_as(
         r#"
         SELECT id, organization_id, farm_id, code, name, created_at, created_by, updated_at, updated_by
@@ -159,7 +163,11 @@ pub async fn create_warehouse<S: AppBackendState>(
     Json(req): Json<CreateWarehouseRequest>,
 ) -> Result<(axum::http::StatusCode, Json<WarehouseDto>), ApiError> {
     auth.require(Permission::FeedingWrite).map_err(ApiError)?;
-    let mut tx = auth.context().begin_tx(state.pool()).await.map_err(ApiError)?;
+    let mut tx = auth
+        .context()
+        .begin_tx(state.pool())
+        .await
+        .map_err(ApiError)?;
     let row: WarehouseDto = sqlx::query_as(
         r#"
         INSERT INTO warehouses (organization_id, farm_id, code, name, created_by)
@@ -178,7 +186,7 @@ pub async fn create_warehouse<S: AppBackendState>(
 
     AuditLogger::record(
         &mut tx,
-        Some(auth.organization_id),
+        auth.organization_id,
         Some(auth.user_id),
         "warehouse.created",
         "warehouses",
@@ -203,7 +211,11 @@ pub async fn list_feed_products<S: AppBackendState>(
     State(state): State<S>,
     auth: AuthPrincipal,
 ) -> Result<Json<Vec<FeedProductDto>>, ApiError> {
-    let mut tx = auth.context().begin_tx(state.pool()).await.map_err(ApiError)?;
+    let mut tx = auth
+        .context()
+        .begin_tx(state.pool())
+        .await
+        .map_err(ApiError)?;
     let rows: Vec<FeedProductDto> = sqlx::query_as(
         r#"
         SELECT id, organization_id, sku, name, brand, pellet_size_mm, protein_percent,
@@ -234,7 +246,11 @@ pub async fn create_feed_product<S: AppBackendState>(
     Json(req): Json<CreateFeedProductRequest>,
 ) -> Result<(axum::http::StatusCode, Json<FeedProductDto>), ApiError> {
     auth.require(Permission::FeedingWrite).map_err(ApiError)?;
-    let mut tx = auth.context().begin_tx(state.pool()).await.map_err(ApiError)?;
+    let mut tx = auth
+        .context()
+        .begin_tx(state.pool())
+        .await
+        .map_err(ApiError)?;
     let row: FeedProductDto = sqlx::query_as(
         r#"
         INSERT INTO feed_products (organization_id, sku, name, brand, pellet_size_mm, protein_percent, default_unit, created_by)
@@ -257,7 +273,7 @@ pub async fn create_feed_product<S: AppBackendState>(
 
     AuditLogger::record(
         &mut tx,
-        Some(auth.organization_id),
+        auth.organization_id,
         Some(auth.user_id),
         "feed_product.created",
         "feed_products",
@@ -291,7 +307,11 @@ pub async fn create_inventory_transaction<S: AppBackendState>(
         )));
     }
 
-    let mut tx = auth.context().begin_tx(state.pool()).await.map_err(ApiError)?;
+    let mut tx = auth
+        .context()
+        .begin_tx(state.pool())
+        .await
+        .map_err(ApiError)?;
     let (tx_id, created_at, created_by): (Uuid, DateTime<Utc>, Option<Uuid>) = sqlx::query_as(
         r#"
         INSERT INTO inventory_transactions (
@@ -329,7 +349,8 @@ pub async fn create_inventory_transaction<S: AppBackendState>(
         .await
         .map_err(|e| ApiError(map_sqlx_err(e)))?;
 
-        let qty_kg = convert_mass_to_kg(line.quantity, &line.unit, custom_factor).map_err(ApiError)?;
+        let qty_kg =
+            convert_mass_to_kg(line.quantity, &line.unit, custom_factor).map_err(ApiError)?;
         let delta = match req.transaction_type.as_str() {
             "receipt" | "return" => qty_kg,
             "issue" | "transfer" => -qty_kg,
@@ -407,7 +428,7 @@ pub async fn create_inventory_transaction<S: AppBackendState>(
 
     AuditLogger::record(
         &mut tx,
-        Some(auth.organization_id),
+        auth.organization_id,
         Some(auth.user_id),
         "inventory_transaction.posted",
         "inventory_transactions",
@@ -444,7 +465,11 @@ pub async fn record_feeding<S: AppBackendState>(
     Json(req): Json<RecordFeedingRequest>,
 ) -> Result<(axum::http::StatusCode, Json<FeedingRecordResponse>), ApiError> {
     auth.require(Permission::FeedingWrite).map_err(ApiError)?;
-    let mut tx = auth.context().begin_tx(state.pool()).await.map_err(ApiError)?;
+    let mut tx = auth
+        .context()
+        .begin_tx(state.pool())
+        .await
+        .map_err(ApiError)?;
 
     let custom_factor: Option<Decimal> = sqlx::query_scalar(
         r#"
@@ -576,7 +601,7 @@ pub async fn record_feeding<S: AppBackendState>(
 
     AuditLogger::record(
         &mut tx,
-        Some(auth.organization_id),
+        auth.organization_id,
         Some(auth.user_id),
         "feeding.recorded",
         "feeding_records",
@@ -613,7 +638,11 @@ pub async fn get_batch_fcr<S: AppBackendState>(
     Path(batch_id): Path<Uuid>,
     Query(query): Query<FcrQuery>,
 ) -> Result<Json<CalculationResult<FcrSummary>>, ApiError> {
-    let mut tx = auth.context().begin_tx(state.pool()).await.map_err(ApiError)?;
+    let mut tx = auth
+        .context()
+        .begin_tx(state.pool())
+        .await
+        .map_err(ApiError)?;
     let total_feed_kg: Decimal = sqlx::query_scalar(
         r#"
         SELECT COALESCE(SUM(

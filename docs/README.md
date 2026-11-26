@@ -27,13 +27,18 @@ Dokumentasi produk dan arsitektur TernakMatric. Bahasa dokumen: **Indonesia**. A
 | [`decisions/002-offline-sync.md`](decisions/002-offline-sync.md) | Strategi sinkronisasi offline, idempotensi, dan resolusi konflik |
 | [`decisions/003-calculation-engine.md`](decisions/003-calculation-engine.md) | Calculation engine murni dan berversi |
 
-## Dokumen terkait di luar `docs/`
+## Subdirektori di dalam `docs/`
 
 | Lokasi | Isi |
 | --- | --- |
-| [`../notes/`](../notes/) | Catatan perjalanan desain `note-1..3` dan audit migrasi `note-4` |
-| [`../data/`](../data/) | Baseline schema SQL, seed referensi, data dictionary, dan ERD |
-| [`../backend/migrations/`](../backend/migrations/) | Schema yang benar-benar dipasang |
+| [`notes/`](notes/) | Catatan perjalanan desain `note-1..3` dan audit migrasi [`note-4`](notes/note-4-migration-audit.md) |
+| [`data/`](data/) | Kamus data ([`DATA_DICTIONARY.md`](data/DATA_DICTIONARY.md)), relasi ([`ERD.md`](data/ERD.md)), dan panduan schema |
+
+## Referensi di luar `docs/`
+
+| Lokasi | Isi |
+| --- | --- |
+| [`../backend/migrations/`](../backend/migrations/) | Satu-satunya sumber SQL schema, seed global, trigger, dan RLS (`2026112401`–`2026112409`) |
 | [`../packages/api-contracts/`](../packages/api-contracts/) | OpenAPI hasil export → `generated/typescript/schema.d.ts` → client `src/index.ts` |
 
 ## Urutan membaca
@@ -42,15 +47,15 @@ Dokumentasi produk dan arsitektur TernakMatric. Bahasa dokumen: **Indonesia**. A
 2. [`05-DOMAIN-MODEL.md`](05-DOMAIN-MODEL.md) → [`06-DATABASE-ERD.md`](06-DATABASE-ERD.md) untuk model dan schema.
 3. [`decisions/001`](decisions/001-tenant-boundary.md), [`decisions/002`](decisions/002-offline-sync.md), [`decisions/003`](decisions/003-calculation-engine.md) untuk keputusan yang mengikat.
 4. [`07-SYSTEM-ARCHITECTURE.md`](07-SYSTEM-ARCHITECTURE.md) → [`09-REPOSITORY-STRUCTURE.md`](09-REPOSITORY-STRUCTURE.md) untuk implementasi.
-5. [`10-DATABASE-HARDENING.md`](10-DATABASE-HARDENING.md) dan [`../notes/note-4-migration-audit.md`](../notes/note-4-migration-audit.md) untuk status production-readiness.
+5. [`10-DATABASE-HARDENING.md`](10-DATABASE-HARDENING.md) dan [`notes/note-4-migration-audit.md`](notes/note-4-migration-audit.md) untuk status production-readiness.
 
 ## Sumber kebenaran
 
 | Area | Sumber kanonik |
 | --- | --- |
-| Produk dan aturan bisnis | Dokumen `01..12` dan `decisions/` |
-| Nama tabel/kolom/satuan | `data/001_ternakmatric_schema.sql`, `data/DATA_DICTIONARY.md`, `docs/06-DATABASE-ERD.md` |
-| Schema terpasang | `backend/migrations/` |
+| Produk dan aturan bisnis | Dokumen `01..12`, `decisions/`, dan `notes/note-1..3` |
+| Nama tabel/kolom/satuan | `backend/migrations/`, `docs/data/DATA_DICTIONARY.md`, `docs/06-DATABASE-ERD.md` |
+| Schema & seed SQL terpasang | `backend/migrations/` |
 | Arsitektur dan batas crate | `docs/07-SYSTEM-ARCHITECTURE.md`, `docs/09-REPOSITORY-STRUCTURE.md` |
 | Kontrak API | Anotasi Utoipa → `packages/api-contracts/openapi/ternakmatric.v1.json` → TypeScript |
 

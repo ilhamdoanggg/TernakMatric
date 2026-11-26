@@ -9,7 +9,7 @@ use uuid::Uuid;
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 pub struct AuditLogRow {
     pub id: Uuid,
-    pub organization_id: Option<Uuid>,
+    pub organization_id: Uuid,
     pub actor_user_id: Option<Uuid>,
     pub actor_email: Option<String>,
     pub actor_display_name: Option<String>,
@@ -24,9 +24,10 @@ pub struct AuditLogRow {
 pub struct AuditLogger;
 
 impl AuditLogger {
+    #[allow(clippy::too_many_arguments)]
     pub async fn record(
         conn: &mut PgConnection,
-        organization_id: Option<OrganizationId>,
+        organization_id: OrganizationId,
         actor_user_id: Option<UserId>,
         action: &str,
         entity_type: &str,
@@ -42,7 +43,7 @@ impl AuditLogger {
             VALUES ($1, $2, $3, $4, $5, $6, $7)
             "#,
         )
-        .bind(organization_id.map(|o| o.0))
+        .bind(organization_id.0)
         .bind(actor_user_id.map(|u| u.0))
         .bind(action)
         .bind(entity_type)

@@ -849,6 +849,7 @@ name = "infra-db"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "dotenvy",
  "serde",
  "serde_json",
  "shared-kernel",

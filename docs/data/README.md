@@ -1,27 +1,21 @@
-# TernakMatric — Referensi Database (Baseline)
+# TernakMatric — Dokumentasi Schema & Kamus Data
 
-**Status**: baseline desain untuk review · **Versi**: v2.0 · **Diselaraskan**: 2026-11-26
+**Status**: diselaraskan dengan schema terpasang · **Versi**: v2.0 · **Diselaraskan**: 2026-11-26
 
-Direktori ini adalah **sumber kebenaran untuk nama tabel, kolom, dan domain** pada tahap desain. Schema yang **benar-benar dipasang** berada di [`../backend/migrations/`](../backend/migrations/). Untuk status pemasangan dan selisihnya, baca [`../notes/note-4-migration-audit.md`](../notes/note-4-migration-audit.md) dan [`../docs/06-DATABASE-ERD.md`](../docs/06-DATABASE-ERD.md).
-
-> **Baseline vs ekstensi**: `001_ternakmatric_schema.sql` dan `002_ternakmatric_seed.sql` tidak mencakup seluruh tabel/kolom di migrasi. Tambahan seperti `individual_tags`, `vaccination_schedules`, `biosecurity_logs`, `environment_readings.source`, `health_records.withdrawal_days`, tipe kalkulasi `sgr`/`hpp`, dan kolom audit `created_by`/`updated_at`/`updated_by` adalah **ekstensi yang diterapkan lewat migrasi**, bukan koreksi terhadap baseline ini.
+Direktori ini berisi **kamus data dan dokumentasi relasi database**. Seluruh SQL schema, seed global, trigger audit, dan kebijakan RLS yang benar-benar dipasang berada di [`../../backend/migrations/`](../../backend/migrations/) (`2026112401`–`2026112409`). Status audit migrasi tercatat di [`../notes/note-4-migration-audit.md`](../notes/note-4-migration-audit.md) dan [`../06-DATABASE-ERD.md`](../06-DATABASE-ERD.md).
 
 ## Isi direktori
 
 | File | Peran |
 | --- | --- |
-| `001_ternakmatric_schema.sql` | Baseline schema PostgreSQL 16: tabel, constraint, index, trigger, dan policy RLS awal |
-| `002_ternakmatric_seed.sql` | Data referensi global: katalog species, unit types, production systems, metrik lingkungan, paket, dan versi formula |
 | `DATA_DICTIONARY.md` | Inventaris tabel, cakupan (global/tenant), dan tujuan domain |
 | `ERD.md` | Gambaran relasi dan keputusan domain |
 
-## Cara pakai (referensi review)
+## Cara menjalankan schema & keamanan RLS
 
-1. Tinjau schema bersama database/security engineer.
-2. Terapkan `001_ternakmatric_schema.sql` dengan role migrator, lalu `002_ternakmatric_seed.sql`.
-3. Buat role aplikasi terpisah, bukan superuser/owner, dan tanpa `BYPASSRLS`. Lihat [`../deploy/db/init-app-role.sql`](../deploy/db/init-app-role.sql).
-4. Berikan hanya grant yang diperlukan.
-5. Set `app.current_organization_id` memakai `SET LOCAL` di setiap transaksi tenant.
+1. Terapkan migrasi SQL (`backend/migrations/2026112401`–`2026112409`) dengan role migrator via Docker Compose.
+2. Provisioning role aplikasi (`NOSUPERUSER NOBYPASSRLS`) dijalankan otomatis oleh [`../../deploy/db/init-app-role.sql`](../../deploy/db/init-app-role.sql).
+3. Set `app.current_organization_id` dan `app.current_user_id` memakai `SET LOCAL` di setiap transaksi tenant (dilakukan otomatis oleh `OrganizationContext::begin_tx`).
 
 ```sql
 BEGIN;
@@ -30,9 +24,9 @@ SET LOCAL app.current_organization_id = '00000000-0000-0000-0000-000000000001';
 COMMIT;
 ```
 
-Untuk menjalankan schema yang dipakai aplikasi, gunakan:
+Untuk menjalankan schema dan migrasi database lokal, gunakan:
 
-```powershell
+```sh
 docker compose up -d postgres
 docker compose run --rm db-migrate
 ```
@@ -40,7 +34,7 @@ docker compose run --rm db-migrate
 ## Prinsip yang tidak berubah
 
 - Model mencakup ikan, crustacean, mollusk, unggas, babi, kambing/domba, sapi/kerbau, kelinci, reptil, serangga, dan species custom tenant. Jangan menambah kolom spesifik species ke tabel generik.
-- `users` dan `organizations` adalah entitas global; keduanya **sengaja tidak memakai RLS tenant** sampai ada policy berbasis membership/GRANT.
+- `users` dan `organizations` adalah entitas global; keduanya **sengaja tidak memakai RLS tenant** dan aksesnya dikontrol oleh membership/RBAC di backend (sedangkan `SELECT` `organization_members` pra-tenant dibatasi ke `user_id = current_user_id()`).
 - RLS adalah pertahanan berlapis: pengecekan otorisasi dan membership di backend tetap wajib.
 - Owner tabel, superuser, dan role ber-`BYPASSRLS` dapat melewati policy. Jangan pakai salah satunya sebagai role runtime.
 - `species`, `unit_types`, `production_systems`, `environment_metrics`, `roles`, `expense_categories`, dan `calculation_versions` memiliki baris global (`organization_id IS NULL`). Hak tulis aplikasi harus dibatasi.
@@ -56,12 +50,12 @@ docker compose run --rm db-migrate
 
 Status terkini dari item berikut dicatat di [`../notes/note-4-migration-audit.md`](../notes/note-4-migration-audit.md):
 
-1. Policy/grant berbasis membership untuk `users` dan `organizations`.
-2. Workflow posting dan trigger immutable untuk header inventory serta output produksi.
-3. Routine pemeliharaan projection `population_balances`/`inventory_balances` dengan row lock yang terverifikasi.
+1. Policy/grant tambahan bila diperlukan untuk `users` dan `organizations`.
+2. Workflow posting `draft -> posted` pada header inventory di domain layer (trigger immutable & guard `draft` sudah terpasang di migrasi).
+3. Routine pemeliharaan projection `population_balances`/`inventory_balances` dengan row lock yang terverifikasi lewat uji integrasi DB.
 4. Transaksi transfer unit dan model reservasi kapasitas.
 5. Metadata storage lampiran dan policy aksesnya.
 6. Siklus hidup paket/langganan dan usage metering.
 7. Model akuntansi yang lebih lengkap bila dibutuhkan.
 8. UI tenant untuk species custom dan profil produksi custom.
-9. Seed `role_permissions` dan urutan seed global terhadap RLS hardening.
+9. Eksekusi langsung `docker compose` + uji integrasi CI terhadap PostgreSQL live.

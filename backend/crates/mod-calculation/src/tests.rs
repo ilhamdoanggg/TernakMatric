@@ -21,25 +21,15 @@ fn test_enclosure_geometry_and_multi_batch_capacity() {
     assert_eq!(rect.value.area_m2, dec!(50.000));
     assert_eq!(rect.value.volume_m3, Some(dec!(60.000)));
 
-    let ok_cap = evaluate_enclosure_capacity(
-        dec!(1500),
-        dec!(1000),
-        dec!(400),
-        Some(1),
-        fixed_time(),
-    )
-    .unwrap();
+    let ok_cap =
+        evaluate_enclosure_capacity(dec!(1500), dec!(1000), dec!(400), Some(1), fixed_time())
+            .unwrap();
     assert!(ok_cap.value.fits);
     assert_eq!(ok_cap.value.utilization_percent, dec!(93.33));
 
-    let overflow_cap = evaluate_enclosure_capacity(
-        dec!(1500),
-        dec!(1200),
-        dec!(400),
-        Some(1),
-        fixed_time(),
-    )
-    .unwrap();
+    let overflow_cap =
+        evaluate_enclosure_capacity(dec!(1500), dec!(1200), dec!(400), Some(1), fixed_time())
+            .unwrap();
     assert!(!overflow_cap.value.fits);
 }
 
@@ -86,13 +76,15 @@ fn test_growth_adg_sgr_poultry_and_dairy() {
     let adg = compute_adg_g_per_day(dec!(42), dec!(1842), dec!(30), Some(1), fixed_time()).unwrap();
     assert_eq!(adg.value, dec!(60.000)); // broiler 60 g/day
 
-    let sgr = compute_sgr_percent_per_day(dec!(5), dec!(100), dec!(60), Some(1), fixed_time()).unwrap();
+    let sgr =
+        compute_sgr_percent_per_day(dec!(5), dec!(100), dec!(60), Some(1), fixed_time()).unwrap();
     assert!(sgr.value > dec!(4.9) && sgr.value < dec!(5.1)); // ln(20)/60*100 ~= 4.9929
 
     let egg_rate = compute_egg_rate_percent(450, 500, dec!(1), Some(1), fixed_time()).unwrap();
     assert_eq!(egg_rate.value, dec!(90.00));
 
-    let milk = compute_milk_yield_per_head_day(dec!(360), 20, dec!(1), Some(1), fixed_time()).unwrap();
+    let milk =
+        compute_milk_yield_per_head_day(dec!(360), 20, dec!(1), Some(1), fixed_time()).unwrap();
     assert_eq!(milk.value, dec!(18.000));
 }
 
@@ -149,7 +141,10 @@ fn test_fcr_economic_vs_biological_and_zero_gain_guard() {
         fixed_time(),
     )
     .unwrap_err();
-    assert!(matches!(err, CalculationError::NonPositiveBiomassGain { .. }));
+    assert!(matches!(
+        err,
+        CalculationError::NonPositiveBiomassGain { .. }
+    ));
 }
 
 #[test]

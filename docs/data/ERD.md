@@ -1,6 +1,6 @@
 # TernakMatric — ERD dan Keputusan Domain
 
-Dokumen ini menjelaskan relasi dan keputusan domain pada **baseline** [`001_ternakmatric_schema.sql`](001_ternakmatric_schema.sql). Tambahan yang hanya ada di migrasi—`individual_tags`, `vaccination_schedules`, `biosecurity_logs`—tercantum sebagai ekstensi di [`../docs/06-DATABASE-ERD.md`](../docs/06-DATABASE-ERD.md).
+Dokumen ini menjelaskan relasi dan keputusan domain pada skema PostgreSQL di [`../../backend/migrations/`](../../backend/migrations/). Diagram lengkap beserta daftar migrasi `2026112401`–`2026112409` tercantum di [`../06-DATABASE-ERD.md`](../06-DATABASE-ERD.md).
 
 ## 1. Tenant dan identitas
 

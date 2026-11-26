@@ -9,7 +9,7 @@
     "version": "1.0.0"
   },
   "paths": {
-    "//api/v1/audit-logs": {
+    "/api/v1/audit-logs": {
       "get": {
         "tags": [
           "Tenant & Auth"
@@ -32,7 +32,7 @@
         }
       }
     },
-    "//api/v1/auth/login": {
+    "/api/v1/auth/login": {
       "post": {
         "tags": [
           "Tenant & Auth"
@@ -72,7 +72,7 @@
         }
       }
     },
-    "//api/v1/auth/register": {
+    "/api/v1/auth/register": {
       "post": {
         "tags": [
           "Tenant & Auth"
@@ -112,7 +112,7 @@
         }
       }
     },
-    "//api/v1/batches": {
+    "/api/v1/batches": {
       "get": {
         "tags": [
           "Production"
@@ -163,7 +163,7 @@
         }
       }
     },
-    "//api/v1/batches/{id}": {
+    "/api/v1/batches/{id}": {
       "patch": {
         "tags": [
           "Production"
@@ -205,7 +205,7 @@
         }
       }
     },
-    "//api/v1/batches/{id}/fcr": {
+    "/api/v1/batches/{id}/fcr": {
       "get": {
         "tags": [
           "Feeding & Inventory"
@@ -237,7 +237,7 @@
         }
       }
     },
-    "//api/v1/batches/{id}/financial-summary": {
+    "/api/v1/batches/{id}/financial-summary": {
       "get": {
         "tags": [
           "Finance & HPP"
@@ -269,7 +269,7 @@
         }
       }
     },
-    "//api/v1/batches/{id}/growth-samples": {
+    "/api/v1/batches/{id}/growth-samples": {
       "post": {
         "tags": [
           "Production"
@@ -311,7 +311,7 @@
         }
       }
     },
-    "//api/v1/batches/{id}/health-records": {
+    "/api/v1/batches/{id}/health-records": {
       "post": {
         "tags": [
           "Health & Biosecurity"
@@ -353,7 +353,7 @@
         }
       }
     },
-    "//api/v1/batches/{id}/mortalities": {
+    "/api/v1/batches/{id}/mortalities": {
       "post": {
         "tags": [
           "Health & Biosecurity"
@@ -395,7 +395,7 @@
         }
       }
     },
-    "//api/v1/batches/{id}/outputs": {
+    "/api/v1/batches/{id}/outputs": {
       "post": {
         "tags": [
           "Production"
@@ -437,7 +437,7 @@
         }
       }
     },
-    "//api/v1/batches/{id}/stock-movements": {
+    "/api/v1/batches/{id}/stock-movements": {
       "post": {
         "tags": [
           "Production"
@@ -479,7 +479,7 @@
         }
       }
     },
-    "//api/v1/batches/{id}/tags": {
+    "/api/v1/batches/{id}/tags": {
       "get": {
         "tags": [
           "Production"
@@ -554,7 +554,7 @@
         }
       }
     },
-    "//api/v1/batches/{id}/vaccinations": {
+    "/api/v1/batches/{id}/vaccinations": {
       "get": {
         "tags": [
           "Health & Biosecurity"
@@ -629,7 +629,7 @@
         }
       }
     },
-    "//api/v1/enclosures": {
+    "/api/v1/enclosures": {
       "get": {
         "tags": [
           "Enclosure"
@@ -680,7 +680,7 @@
         }
       }
     },
-    "//api/v1/enclosures/{id}": {
+    "/api/v1/enclosures/{id}": {
       "get": {
         "tags": [
           "Enclosure"
@@ -752,7 +752,7 @@
         }
       }
     },
-    "//api/v1/enclosures/{id}/calculate-capacity": {
+    "/api/v1/enclosures/{id}/calculate-capacity": {
       "post": {
         "tags": [
           "Enclosure"
@@ -794,7 +794,7 @@
         }
       }
     },
-    "//api/v1/enclosures/{id}/environment": {
+    "/api/v1/enclosures/{id}/environment": {
       "get": {
         "tags": [
           "Environment"
@@ -829,7 +829,7 @@
         }
       }
     },
-    "//api/v1/environment/iot-ingest": {
+    "/api/v1/environment/iot-ingest": {
       "post": {
         "tags": [
           "Environment"
@@ -859,7 +859,7 @@
         }
       }
     },
-    "//api/v1/environment/metrics": {
+    "/api/v1/environment/metrics": {
       "get": {
         "tags": [
           "Environment"
@@ -882,7 +882,7 @@
         }
       }
     },
-    "//api/v1/environment/readings": {
+    "/api/v1/environment/readings": {
       "post": {
         "tags": [
           "Environment"
@@ -912,7 +912,7 @@
         }
       }
     },
-    "//api/v1/farms": {
+    "/api/v1/farms": {
       "get": {
         "tags": [
           "Tenant & Auth"
@@ -963,7 +963,7 @@
         }
       }
     },
-    "//api/v1/farms/{id}": {
+    "/api/v1/farms/{id}": {
       "patch": {
         "tags": [
           "Tenant & Auth"
@@ -1005,7 +1005,7 @@
         }
       }
     },
-    "//api/v1/farms/{id}/biosecurity-logs": {
+    "/api/v1/farms/{id}/biosecurity-logs": {
       "post": {
         "tags": [
           "Health & Biosecurity"
@@ -1047,7 +1047,7 @@
         }
       }
     },
-    "//api/v1/feed-products": {
+    "/api/v1/feed-products": {
       "get": {
         "tags": [
           "Feeding & Inventory"
@@ -1098,7 +1098,7 @@
         }
       }
     },
-    "//api/v1/feeding": {
+    "/api/v1/feeding": {
       "post": {
         "tags": [
           "Feeding & Inventory"
@@ -1128,7 +1128,7 @@
         }
       }
     },
-    "//api/v1/finance/expenses": {
+    "/api/v1/finance/expenses": {
       "post": {
         "tags": [
           "Finance & HPP"
@@ -1158,7 +1158,7 @@
         }
       }
     },
-    "//api/v1/finance/sales": {
+    "/api/v1/finance/sales": {
       "post": {
         "tags": [
           "Finance & HPP"
@@ -1188,7 +1188,7 @@
         }
       }
     },
-    "//api/v1/inventory/transactions": {
+    "/api/v1/inventory/transactions": {
       "post": {
         "tags": [
           "Feeding & Inventory"
@@ -1218,7 +1218,7 @@
         }
       }
     },
-    "//api/v1/organizations": {
+    "/api/v1/organizations": {
       "get": {
         "tags": [
           "Tenant & Auth"
@@ -1269,7 +1269,7 @@
         }
       }
     },
-    "//api/v1/organizations/{id}/members": {
+    "/api/v1/organizations/{id}/members": {
       "get": {
         "tags": [
           "Tenant & Auth"
@@ -1344,7 +1344,7 @@
         }
       }
     },
-    "//api/v1/species": {
+    "/api/v1/species": {
       "get": {
         "tags": [
           "Species"
@@ -1395,7 +1395,7 @@
         }
       }
     },
-    "//api/v1/species/{id}/profiles": {
+    "/api/v1/species/{id}/profiles": {
       "get": {
         "tags": [
           "Species"
@@ -1463,99 +1463,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SpeciesProfileDto"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "//api/v1/vaccinations/{id}": {
-      "patch": {
-        "tags": [
-          "Health & Biosecurity"
-        ],
-        "operationId": "update_vaccination_status",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "Vaccination Schedule ID",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateVaccinationStatusRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/VaccinationScheduleDto"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "//api/v1/warehouses": {
-      "get": {
-        "tags": [
-          "Feeding & Inventory"
-        ],
-        "operationId": "list_warehouses",
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/WarehouseDto"
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "Feeding & Inventory"
-        ],
-        "operationId": "create_warehouse",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateWarehouseRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/WarehouseDto"
                 }
               }
             }
@@ -1666,6 +1573,99 @@
         }
       }
     },
+    "/api/v1/vaccinations/{id}": {
+      "patch": {
+        "tags": [
+          "Health & Biosecurity"
+        ],
+        "operationId": "update_vaccination_status",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Vaccination Schedule ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateVaccinationStatusRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VaccinationScheduleDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/warehouses": {
+      "get": {
+        "tags": [
+          "Feeding & Inventory"
+        ],
+        "operationId": "list_warehouses",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WarehouseDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Feeding & Inventory"
+        ],
+        "operationId": "create_warehouse",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateWarehouseRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WarehouseDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/health": {
       "get": {
         "tags": [
@@ -1693,6 +1693,7 @@
         "type": "object",
         "required": [
           "id",
+          "organization_id",
           "action",
           "entity_type",
           "occurred_at"
@@ -1741,10 +1742,7 @@
             "format": "date-time"
           },
           "organization_id": {
-            "type": [
-              "string",
-              "null"
-            ],
+            "type": "string",
             "format": "uuid"
           }
         }

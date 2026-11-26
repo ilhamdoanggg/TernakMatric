@@ -50,7 +50,10 @@ impl AuthPrincipal {
     }
 
     pub fn require(&self, permission: Permission) -> Result<(), AppError> {
-        if self.roles.iter().any(|r| r == "ORG_OWNER" || r == "ORG_ADMIN")
+        if self
+            .roles
+            .iter()
+            .any(|r| r == "ORG_OWNER" || r == "ORG_ADMIN")
             || self.permissions.contains(permission.as_str())
         {
             Ok(())

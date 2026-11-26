@@ -1,6 +1,7 @@
--- 2026112409_seed_catalogs.sql
--- Global reference catalogs across all 8 species categories, system RBAC roles,
--- environment metrics, plans, expense categories, and versioned calculation definitions.
+-- 2026112408_seed_catalogs.sql
+-- Global starter catalogs, system RBAC roles/permissions, and calculation formula definitions.
+-- Runs BEFORE 2026112409_rls_triggers_hardening.sql so global seeds (organization_id IS NULL)
+-- do not depend on BYPASSRLS. Tenant production profiles remain tenant-managed.
 
 INSERT INTO roles (organization_id, code, name, is_system) VALUES
 (NULL, 'ORG_OWNER', 'Organization Owner', true),
@@ -22,6 +23,35 @@ INSERT INTO permissions (code, description) VALUES
 ('finance.write', 'Record operational expenses and output sales'),
 ('analytics.read', 'Read dashboards, calculation snapshots, and financial reports')
 ON CONFLICT (code) DO NOTHING;
+
+WITH mapping(role_code, perm_codes) AS (
+  VALUES
+    ('ORG_OWNER', ARRAY[
+      'org.manage','farm.manage','species.manage','production.write',
+      'feeding.write','environment.write','health.write','finance.write','analytics.read'
+    ]),
+    ('ORG_ADMIN', ARRAY[
+      'org.manage','farm.manage','species.manage','production.write',
+      'feeding.write','environment.write','health.write','finance.write','analytics.read'
+    ]),
+    ('FARM_MANAGER', ARRAY[
+      'farm.manage','production.write','feeding.write','environment.write',
+      'health.write','analytics.read'
+    ]),
+    ('FARM_OPERATOR', ARRAY[
+      'production.write','feeding.write','environment.write','health.write'
+    ]),
+    ('FINANCE_STAFF', ARRAY['finance.write','analytics.read']),
+    ('VIEWER', ARRAY['analytics.read'])
+)
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT r.id, p.id
+FROM mapping m
+JOIN roles r
+  ON r.organization_id IS NULL AND r.code = m.role_code
+JOIN permissions p
+  ON p.code = ANY (m.perm_codes)
+ON CONFLICT DO NOTHING;
 
 INSERT INTO unit_types (code, name, habitat) VALUES
 ('EARTHEN', 'Kolam tanah', 'water'),
@@ -57,28 +87,54 @@ INSERT INTO production_systems (code, name, description) VALUES
 ('APICULTURE', 'Apiari', 'Pemeliharaan lebah madu')
 ON CONFLICT (code) DO NOTHING;
 
+-- Starter multi-species global catalog (organization_id IS NULL = system catalog).
 INSERT INTO species
 (organization_id, category, common_name, scientific_name, code, description, is_system)
 VALUES
-(NULL, 'fish', 'Lele', 'Clarias spp.', 'CATFISH_CLARIAS', 'Katalog awal; validasi profil lokal sebelum produksi.', true),
-(NULL, 'fish', 'Nila', 'Oreochromis niloticus', 'TILAPIA_NILE', 'Katalog awal; validasi profil lokal sebelum produksi.', true),
-(NULL, 'fish', 'Gurame', 'Osphronemus goramy', 'GOURAMI_GIANT', 'Katalog awal; validasi profil lokal sebelum produksi.', true),
-(NULL, 'fish', 'Patin', 'Pangasius spp.', 'PANGASIUS', 'Katalog awal; validasi profil lokal sebelum produksi.', true),
-(NULL, 'fish', 'Ikan mas', 'Cyprinus carpio', 'CARP_COMMON', 'Katalog awal; validasi profil lokal sebelum produksi.', true),
+-- Fish
+(NULL, 'fish', 'Lele', 'Clarias spp.', 'CATFISH_CLARIAS', 'Katalog awal; validasi populasi dan profil lokal sebelum produksi.', true),
+(NULL, 'fish', 'Nila', 'Oreochromis niloticus', 'TILAPIA_NILE', 'Katalog awal; validasi populasi dan profil lokal sebelum produksi.', true),
+(NULL, 'fish', 'Gurame', 'Osphronemus goramy', 'GOURAMI_GIANT', 'Katalog awal; validasi populasi dan profil lokal sebelum produksi.', true),
+(NULL, 'fish', 'Patin', 'Pangasius spp.', 'PANGASIUS', 'Katalog awal; validasi populasi dan profil lokal sebelum produksi.', true),
+(NULL, 'fish', 'Ikan mas', 'Cyprinus carpio', 'CARP_COMMON', 'Katalog awal; validasi populasi dan profil lokal sebelum produksi.', true),
+(NULL, 'fish', 'Ikan tawes', 'Barbonymus gonionotus', 'BARB_TAWES', 'Katalog awal; validasi profil lokal sebelum produksi.', true),
+(NULL, 'fish', 'Bawal air tawar', 'Colossoma macropomum', 'PACU_FRESHWATER', 'Katalog awal; validasi profil lokal sebelum produksi.', true),
+(NULL, 'fish', 'Salmon Atlantik', 'Salmo salar', 'SALMON_ATLANTIC', 'Katalog awal untuk budidaya air dingin.', true),
+(NULL, 'fish', 'Tuna sirip kuning', 'Thunnus albacares', 'TUNA_YELLOWFIN', 'Katalog awal untuk budidaya laut.', true),
+-- Crustacean
 (NULL, 'crustacean', 'Udang vaname', 'Litopenaeus vannamei', 'SHRIMP_VANNAMEI', 'Katalog awal; validasi profil lokal sebelum produksi.', true),
 (NULL, 'crustacean', 'Udang windu', 'Penaeus monodon', 'SHRIMP_TIGER', 'Katalog awal; validasi profil lokal sebelum produksi.', true),
+(NULL, 'crustacean', 'Kepiting bakau', 'Scylla serrata', 'CRAB_MANGROVE', 'Katalog awal; validasi profil lokal sebelum produksi.', true),
+(NULL, 'crustacean', 'Lobster', 'Panulirus spp.', 'LOBSTER', 'Katalog awal; validasi profil lokal sebelum produksi.', true),
+-- Mollusk
+(NULL, 'mollusk', 'Tiram', 'Crassostrea spp.', 'OYSTER', 'Katalog awal; validasi profil lokal sebelum produksi.', true),
 (NULL, 'mollusk', 'Kerang hijau', 'Perna viridis', 'MUSSEL_GREEN', 'Katalog awal; validasi profil lokal sebelum produksi.', true),
+-- Poultry
 (NULL, 'poultry', 'Ayam broiler', 'Gallus gallus domesticus', 'CHICKEN_BROILER', 'Katalog awal; strain dan sistem menentukan parameter.', true),
 (NULL, 'poultry', 'Ayam petelur', 'Gallus gallus domesticus', 'CHICKEN_LAYER', 'Katalog awal; strain dan sistem menentukan parameter.', true),
+(NULL, 'poultry', 'Ayam kampung', 'Gallus gallus domesticus', 'CHICKEN_NATIVE', 'Katalog awal; validasi profil lokal sebelum produksi.', true),
 (NULL, 'poultry', 'Itik', 'Anas platyrhynchos domesticus', 'DUCK', 'Katalog awal; validasi profil lokal sebelum produksi.', true),
+(NULL, 'poultry', 'Entok', 'Cairina moschata', 'MUSCOVY_DUCK', 'Katalog awal; validasi profil lokal sebelum produksi.', true),
+(NULL, 'poultry', 'Angsa', 'Anser anser domesticus', 'GOOSE', 'Katalog awal; validasi profil lokal sebelum produksi.', true),
+(NULL, 'poultry', 'Kalkun', 'Meleagris gallopavo', 'TURKEY', 'Katalog awal; validasi profil lokal sebelum produksi.', true),
 (NULL, 'poultry', 'Burung puyuh', 'Coturnix coturnix', 'QUAIL', 'Katalog awal; validasi profil lokal sebelum produksi.', true),
+-- Mammal
 (NULL, 'mammal', 'Babi', 'Sus scrofa domesticus', 'PIG', 'Katalog awal; strain dan sistem menentukan parameter.', true),
 (NULL, 'mammal', 'Kambing', 'Capra aegagrus hircus', 'GOAT', 'Katalog awal; strain dan sistem menentukan parameter.', true),
 (NULL, 'mammal', 'Domba', 'Ovis aries', 'SHEEP', 'Katalog awal; strain dan sistem menentukan parameter.', true),
 (NULL, 'mammal', 'Sapi', 'Bos taurus', 'CATTLE', 'Katalog awal; strain dan sistem menentukan parameter.', true),
 (NULL, 'mammal', 'Sapi Bali', 'Bos javanicus', 'CATTLE_BALI', 'Katalog awal; validasi profil lokal sebelum produksi.', true),
+(NULL, 'mammal', 'Kerbau', 'Bubalus bubalis', 'BUFFALO', 'Katalog awal; validasi profil lokal sebelum produksi.', true),
 (NULL, 'mammal', 'Kelinci', 'Oryctolagus cuniculus', 'RABBIT', 'Katalog awal; validasi profil lokal sebelum produksi.', true),
+(NULL, 'mammal', 'Rusa', 'Cervus spp.', 'DEER', 'Katalog awal; validasi profil lokal sebelum produksi.', true),
+(NULL, 'mammal', 'Kuda', 'Equus ferus caballus', 'HORSE', 'Katalog awal; validasi profil lokal sebelum produksi.', true),
+-- Reptile
+(NULL, 'reptile', 'Buaya', 'Crocodylus spp.', 'CROCODILE', 'Katalog awal; butuh izin dan parameter khusus.', true),
 (NULL, 'reptile', 'Kura-kura', 'Testudines spp.', 'TORTOISE', 'Katalog awal; butuh izin dan parameter khusus.', true),
+(NULL, 'reptile', 'Ular', 'Serpentes spp.', 'SNAKE', 'Katalog awal; butuh izin dan parameter khusus.', true),
+-- Insect
+(NULL, 'insect', 'Lebah madu', 'Apis mellifera', 'HONEYBEE', 'Katalog awal untuk apiari.', true),
+(NULL, 'insect', 'Ulat sutra', 'Bombyx mori', 'SILKWORM', 'Katalog awal; validasi profil lokal sebelum produksi.', true),
 (NULL, 'insect', 'Jangkrik', 'Gryllus spp.', 'CRICKET', 'Katalog awal; validasi profil lokal sebelum produksi.', true),
 (NULL, 'insect', 'Maggot BSF', 'Hermetia illucens', 'BSF_MAGGOT', 'Katalog awal untuk produksi larva pakan.', true)
 ON CONFLICT (organization_id, code) DO NOTHING;
@@ -125,11 +181,17 @@ ON CONFLICT (organization_id, code) DO NOTHING;
 INSERT INTO calculation_versions
 (code, version, formula_name, formula_definition, effective_from)
 VALUES
+('ABW', 1, 'Average body weight',
+ '{"formula":"total_sample_weight_g / sample_count","unit":"g/head"}',
+ '2026-01-01T00:00:00Z'),
 ('VOLUME_RECTANGLE', 1, 'Rectangular volume',
  '{"formula":"length_m * width_m * average_depth_m","unit":"m3","applies_to":"water units"}',
  '2026-01-01T00:00:00Z'),
 ('VOLUME_CIRCLE', 1, 'Circular volume',
  '{"formula":"pi * (diameter_m / 2)^2 * average_depth_m","unit":"m3","applies_to":"water units"}',
+ '2026-01-01T00:00:00Z'),
+('AREA_ONLY', 1, 'Enclosure area only',
+ '{"formula":"area_m2","unit":"m2","applies_to":"land, pasture, cage, or explicit area"}',
  '2026-01-01T00:00:00Z'),
 ('POPULATION_BALANCE', 1, 'Population ledger balance',
  '{"formula":"opening + births + purchases + transfers_in - mortality - culls - harvest - transfers_out - sales + adjustments","unit":"head"}',
@@ -137,8 +199,14 @@ VALUES
 ('BIOMASS_ESTIMATE', 1, 'Estimated biomass',
  '{"formula":"estimated_population * average_body_weight_g / 1000","unit":"kg","warning":"Population and ABW are estimates"}',
  '2026-01-01T00:00:00Z'),
+('ENCLOSURE_BIOMASS_ESTIMATE', 1, 'Enclosure multi-cohort estimated biomass',
+ '{"formula":"sum(cohort_population * cohort_abw_g / 1000)","unit":"kg","warning":"Aggregated from cohort population and sample estimates"}',
+ '2026-01-01T00:00:00Z'),
 ('FCR_GENERIC', 1, 'Feed conversion ratio',
  '{"formula":"feed_consumed_kg / weight_gain_kg","unit":"ratio","warning":"Supports biological and economic modes"}',
+ '2026-01-01T00:00:00Z'),
+('FEEDING_VARIANCE', 1, 'Feeding variance percentage',
+ '{"formula":"((actual_feed_kg - recommended_feed_kg) / recommended_feed_kg) * 100","unit":"percent"}',
  '2026-01-01T00:00:00Z'),
 ('SURVIVAL_RATE', 1, 'Survival rate',
  '{"formula":"population_at_end / population_at_start * 100","unit":"percent"}',
@@ -164,11 +232,20 @@ VALUES
 ('CAPACITY_BY_BIOMASS', 1, 'Biomass-based capacity utilization',
  '{"formula":"active_biomass_kg / unit_capacity_kg * 100","unit":"percent"}',
  '2026-01-01T00:00:00Z'),
+('CAPACITY_UTILIZATION', 1, 'Enclosure capacity utilization',
+ '{"formula":"((existing_active_occupancy + requested_addition) / max_capacity) * 100","unit":"percent"}',
+ '2026-01-01T00:00:00Z'),
 ('HARVEST_FORECAST', 1, 'Output forecast',
  '{"formula":"population * expected_body_weight_g * assumed_survival_rate","unit":"kg","warning":"Depends on latest sampling and assumptions"}',
  '2026-01-01T00:00:00Z'),
+('EGG_OUTPUT_FORECAST', 1, 'Egg production forecast',
+ '{"formula":"laying_population * (expected_egg_rate_percent / 100) * days","unit":"egg","warning":"Depends on expected hen-day rate"}',
+ '2026-01-01T00:00:00Z'),
 ('HPP_LIVE_WEIGHT', 1, 'HPP per kg live weight',
  '{"formula":"total_allocated_cost / total_live_weight_kg","unit":"currency/kg"}',
+ '2026-01-01T00:00:00Z'),
+('HPP_OUTPUT_UNIT', 1, 'HPP per non-meat output unit',
+ '{"formula":"total_allocated_cost / output_quantity","unit":"currency/unit"}',
  '2026-01-01T00:00:00Z'),
 ('PROFITABILITY', 1, 'Batch profitability',
  '{"formula":"total_revenue - total_feed_cost - total_other_cost","unit":"currency"}',

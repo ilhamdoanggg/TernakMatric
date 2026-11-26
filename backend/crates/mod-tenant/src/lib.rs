@@ -114,7 +114,7 @@ pub struct AuditLogQuery {
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct AuditLogDto {
     pub id: Uuid,
-    pub organization_id: Option<Uuid>,
+    pub organization_id: Uuid,
     pub actor_user_id: Option<Uuid>,
     pub actor_email: Option<String>,
     pub actor_display_name: Option<String>,
@@ -205,11 +205,15 @@ pub async fn login<S: AppBackendState>(
     .map_err(|e| ApiError(map_sqlx_err(e)))?;
 
     let Some((user_id, email, hash)) = row else {
-        return Err(ApiError(AppError::Unauthorized("invalid credentials".into())));
+        return Err(ApiError(AppError::Unauthorized(
+            "invalid credentials".into(),
+        )));
     };
     let expected = format!("plain_placeholder:{}", req.password);
     if hash.as_deref() != Some(expected.as_str()) {
-        return Err(ApiError(AppError::Unauthorized("invalid credentials".into())));
+        return Err(ApiError(AppError::Unauthorized(
+            "invalid credentials".into(),
+        )));
     }
 
     let token = state
@@ -233,6 +237,15 @@ pub async fn list_organizations<S: AppBackendState>(
     State(state): State<S>,
     user: AuthenticatedUser,
 ) -> Result<Json<Vec<OrganizationDto>>, ApiError> {
+    let mut tx = state
+        .pool()
+        .begin()
+        .await
+        .map_err(|e| ApiError(map_sqlx_err(e)))?;
+    with_user(&mut *tx, user.user_id)
+        .await
+        .map_err(|e| ApiError(map_sqlx_err(e)))?;
+
     let rows: Vec<OrganizationDto> = sqlx::query_as(
         r#"
         SELECT o.id, o.name, o.slug, o.timezone, o.default_currency::text AS default_currency,
@@ -244,9 +257,10 @@ pub async fn list_organizations<S: AppBackendState>(
         "#,
     )
     .bind(user.user_id.0)
-    .fetch_all(state.pool())
+    .fetch_all(&mut *tx)
     .await
     .map_err(|e| ApiError(map_sqlx_err(e)))?;
+    tx.commit().await.map_err(|e| ApiError(map_sqlx_err(e)))?;
 
     Ok(Json(rows))
 }
@@ -263,7 +277,11 @@ pub async fn create_organization<S: AppBackendState>(
     user: AuthenticatedUser,
     Json(req): Json<CreateOrganizationRequest>,
 ) -> Result<(axum::http::StatusCode, Json<OrganizationDto>), ApiError> {
-    let mut tx = state.pool().begin().await.map_err(|e| ApiError(map_sqlx_err(e)))?;
+    let mut tx = state
+        .pool()
+        .begin()
+        .await
+        .map_err(|e| ApiError(map_sqlx_err(e)))?;
     with_user(&mut *tx, user.user_id)
         .await
         .map_err(|e| ApiError(map_sqlx_err(e)))?;
@@ -316,7 +334,7 @@ pub async fn create_organization<S: AppBackendState>(
 
     AuditLogger::record(
         &mut tx,
-        Some(OrganizationId(org.id)),
+        OrganizationId(org.id),
         Some(user.user_id),
         "organization.created",
         "organizations",
@@ -348,7 +366,11 @@ pub async fn list_members<S: AppBackendState>(
             "organization path mismatch".into(),
         )));
     }
-    let mut tx = auth.context().begin_tx(state.pool()).await.map_err(ApiError)?;
+    let mut tx = auth
+        .context()
+        .begin_tx(state.pool())
+        .await
+        .map_err(ApiError)?;
     let rows: Vec<MemberDto> = sqlx::query_as(
         r#"
         SELECT m.id, u.id AS user_id, u.email, u.display_name, m.status,
@@ -391,14 +413,17 @@ pub async fn add_member<S: AppBackendState>(
         )));
     }
 
-    let mut tx = auth.context().begin_tx(state.pool()).await.map_err(ApiError)?;
-    let target_user: (Uuid, String, String) = sqlx::query_as(
-        "SELECT id, email, display_name FROM users WHERE email = $1",
-    )
-    .bind(req.user_email.trim().to_lowercase())
-    .fetch_one(&mut *tx)
-    .await
-    .map_err(|e| ApiError(map_sqlx_err(e)))?;
+    let mut tx = auth
+        .context()
+        .begin_tx(state.pool())
+        .await
+        .map_err(ApiError)?;
+    let target_user: (Uuid, String, String) =
+        sqlx::query_as("SELECT id, email, display_name FROM users WHERE email = $1")
+            .bind(req.user_email.trim().to_lowercase())
+            .fetch_one(&mut *tx)
+            .await
+            .map_err(|e| ApiError(map_sqlx_err(e)))?;
 
     let member_id: Uuid = sqlx::query_scalar(
         r#"
@@ -430,7 +455,7 @@ pub async fn add_member<S: AppBackendState>(
 
     AuditLogger::record(
         &mut tx,
-        Some(auth.organization_id),
+        auth.organization_id,
         Some(auth.user_id),
         "member.added",
         "organization_members",
@@ -466,7 +491,11 @@ pub async fn list_farms<S: AppBackendState>(
     State(state): State<S>,
     auth: AuthPrincipal,
 ) -> Result<Json<Vec<FarmDto>>, ApiError> {
-    let mut tx = auth.context().begin_tx(state.pool()).await.map_err(ApiError)?;
+    let mut tx = auth
+        .context()
+        .begin_tx(state.pool())
+        .await
+        .map_err(ApiError)?;
     let farms: Vec<FarmDto> = sqlx::query_as(
         r#"
         SELECT id, organization_id, code, name, address, latitude, longitude, status, version,
@@ -497,7 +526,11 @@ pub async fn create_farm<S: AppBackendState>(
     Json(req): Json<CreateFarmRequest>,
 ) -> Result<(axum::http::StatusCode, Json<FarmDto>), ApiError> {
     auth.require(Permission::FarmManage).map_err(ApiError)?;
-    let mut tx = auth.context().begin_tx(state.pool()).await.map_err(ApiError)?;
+    let mut tx = auth
+        .context()
+        .begin_tx(state.pool())
+        .await
+        .map_err(ApiError)?;
     let farm: FarmDto = sqlx::query_as(
         r#"
         INSERT INTO farms (organization_id, code, name, address, latitude, longitude, created_by)
@@ -519,7 +552,7 @@ pub async fn create_farm<S: AppBackendState>(
 
     AuditLogger::record(
         &mut tx,
-        Some(auth.organization_id),
+        auth.organization_id,
         Some(auth.user_id),
         "farm.created",
         "farms",
@@ -549,7 +582,11 @@ pub async fn update_farm<S: AppBackendState>(
     Json(req): Json<UpdateFarmRequest>,
 ) -> Result<Json<FarmDto>, ApiError> {
     auth.require(Permission::FarmManage).map_err(ApiError)?;
-    let mut tx = auth.context().begin_tx(state.pool()).await.map_err(ApiError)?;
+    let mut tx = auth
+        .context()
+        .begin_tx(state.pool())
+        .await
+        .map_err(ApiError)?;
 
     let before: FarmDto = sqlx::query_as(
         r#"
@@ -593,7 +630,7 @@ pub async fn update_farm<S: AppBackendState>(
 
     AuditLogger::record(
         &mut tx,
-        Some(auth.organization_id),
+        auth.organization_id,
         Some(auth.user_id),
         "farm.updated",
         "farms",
@@ -620,7 +657,11 @@ pub async fn list_audit_logs<S: AppBackendState>(
     Query(q): Query<AuditLogQuery>,
 ) -> Result<Json<Vec<AuditLogDto>>, ApiError> {
     auth.require(Permission::AnalyticsRead).map_err(ApiError)?;
-    let mut tx = auth.context().begin_tx(state.pool()).await.map_err(ApiError)?;
+    let mut tx = auth
+        .context()
+        .begin_tx(state.pool())
+        .await
+        .map_err(ApiError)?;
     let rows = AuditLogger::list_for_org(
         &mut tx,
         auth.organization_id,
@@ -653,11 +694,30 @@ pub fn router<S: AppBackendState>() -> Router<S> {
 
 #[derive(OpenApi)]
 #[openapi(
-    paths(register, login, list_organizations, create_organization, list_members, add_member, list_farms, create_farm, update_farm, list_audit_logs),
+    paths(
+        register,
+        login,
+        list_organizations,
+        create_organization,
+        list_members,
+        add_member,
+        list_farms,
+        create_farm,
+        update_farm,
+        list_audit_logs
+    ),
     components(schemas(
-        RegisterRequest, LoginRequest, AuthTokenResponse,
-        CreateOrganizationRequest, OrganizationDto, InviteMemberRequest, MemberDto,
-        CreateFarmRequest, UpdateFarmRequest, FarmDto, AuditLogDto
+        RegisterRequest,
+        LoginRequest,
+        AuthTokenResponse,
+        CreateOrganizationRequest,
+        OrganizationDto,
+        InviteMemberRequest,
+        MemberDto,
+        CreateFarmRequest,
+        UpdateFarmRequest,
+        FarmDto,
+        AuditLogDto
     ))
 )]
 pub struct TenantApi;

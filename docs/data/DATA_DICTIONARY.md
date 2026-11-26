@@ -2,7 +2,7 @@
 
 Sumber kebenaran untuk tipe kolom dan constraint adalah SQL migrasi, bukan dokumen ini. Dokumen ini menjelaskan **tujuan dan kepemilikan** tiap tabel.
 
-> **Status**: inventaris ini mengikuti baseline [`001_ternakmatric_schema.sql`](001_ternakmatric_schema.sql). Tabel yang hanya ada di migrasi—`individual_tags`, `vaccination_schedules`, `biosecurity_logs`—adalah ekstensi yang tercantum di [`../docs/06-DATABASE-ERD.md`](../docs/06-DATABASE-ERD.md). Untuk status schema terpasang, baca [`README.md`](README.md) dan [`../notes/note-4-migration-audit.md`](../notes/note-4-migration-audit.md).
+> **Status**: selaras dengan [`../../backend/migrations/`](../../backend/migrations/) (`2026112401`–`2026112409`), termasuk tabel `individual_tags`, `vaccination_schedules`, dan `biosecurity_logs`. Gambaran relasi tersedia di [`../06-DATABASE-ERD.md`](../06-DATABASE-ERD.md) dan [`ERD.md`](ERD.md); riwayat audit di [`../notes/note-4-migration-audit.md`](../notes/note-4-migration-audit.md).
 
 ## Identitas dan SaaS
 
@@ -39,11 +39,14 @@ Sumber kebenaran untuk tipe kolom dan constraint adalah SQL migrasi, bukan dokum
 | `batch_unit_assignments` | Tenant | Okupansi batch di unit produksi dalam rentang waktu tertentu |
 | `stock_movements` | Tenant | Ledger populasi ternak bersifat append-only |
 | `population_balances` | Tenant | Proyeksi populasi yang dipelihara dalam transaksi |
+| `individual_tags` | Tenant | Identitas individu (`ear_tag`, `rfid`, silsilah) |
 | `mortality_records` | Tenant | Catatan detail kematian/cull |
 | `growth_samples` | Tenant | Sampel jumlah, berat, dan panjang opsional |
 | `environment_metrics` | Global | Katalog metrik: air, udara, tanah, kandang, pakan |
 | `environment_readings` | Tenant | Pengukuran manual/IoT dengan satuan eksplisit |
+| `vaccination_schedules` | Tenant | Jadwal & status vaksinasi batch |
 | `health_records` | Tenant | Observasi, dugaan penyakit, dan perawatan |
+| `biosecurity_logs` | Tenant | Catatan sanitasi, disinfeksi, karantina, dan kontrol akses |
 | `feeding_records` | Tenant | Pakan aktual yang diberikan ke batch |
 
 ## Inventory
@@ -68,7 +71,7 @@ Sumber kebenaran untuk tipe kolom dan constraint adalah SQL migrasi, bukan dokum
 | `sale_items` | Tenant | Kuantitas, satuan, dan harga output yang terjual |
 | `calculation_versions` | Global | Versi dan definisi rumus |
 | `calculation_runs` | Tenant | Snapshot input/hasil untuk reproduktibilitas |
-| `audit_logs` | Global/tenant | Aktor, aksi, entitas, dan snapshot sebelum/sesudah |
+| `audit_logs` | Tenant | Aktor, aksi, entitas, dan snapshot sebelum/sesudah |
 
 ## Sinkronisasi offline
 

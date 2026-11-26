@@ -51,7 +51,10 @@ mod tests {
             dec!(60)
         );
         assert!(convert_mass_to_kg(dec!(2), "bag", None).is_err());
-        assert_eq!(convert_volume_to_liters(dec!(2500), "ml").unwrap(), dec!(2.5));
+        assert_eq!(
+            convert_volume_to_liters(dec!(2500), "ml").unwrap(),
+            dec!(2.5)
+        );
     }
 
     #[test]

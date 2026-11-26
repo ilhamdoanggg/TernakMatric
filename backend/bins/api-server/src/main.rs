@@ -3,8 +3,8 @@ use axum::routing::{get, post};
 use axum::{Json, Router};
 use infra_auth::{
     ApiError, AppBackendState, AuthPrincipal, JwtConfig, JwtService, RegisterDeviceRequest,
-    RegisterDeviceResponse, SyncConflictRecord, SyncPullResponse, SyncPushRequest, SyncPushResponse,
-    SyncService,
+    RegisterDeviceResponse, SyncConflictRecord, SyncPullResponse, SyncPushRequest,
+    SyncPushResponse, SyncService,
 };
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::PgPoolOptions;
@@ -129,6 +129,25 @@ async fn sync_conflicts(
     Ok(Json(rows))
 }
 
+struct MergeModuleApis;
+
+impl utoipa::Modify for MergeModuleApis {
+    fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
+        for module_api in [
+            mod_tenant::TenantApi::openapi(),
+            mod_enclosure::EnclosureApi::openapi(),
+            mod_species::SpeciesApi::openapi(),
+            mod_production::ProductionApi::openapi(),
+            mod_feeding::FeedingApi::openapi(),
+            mod_environment::EnvironmentApi::openapi(),
+            mod_health::HealthApi::openapi(),
+            mod_finance::FinanceApi::openapi(),
+        ] {
+            openapi.merge(module_api);
+        }
+    }
+}
+
 #[derive(OpenApi)]
 #[openapi(
     info(
@@ -141,16 +160,7 @@ async fn sync_conflicts(
         HealthResponse, RegisterDeviceRequest, RegisterDeviceResponse,
         SyncPushRequest, SyncPushResponse, SyncPullResponse, SyncConflictRecord
     )),
-    nest(
-        (path = "/", api = mod_tenant::TenantApi),
-        (path = "/", api = mod_enclosure::EnclosureApi),
-        (path = "/", api = mod_species::SpeciesApi),
-        (path = "/", api = mod_production::ProductionApi),
-        (path = "/", api = mod_feeding::FeedingApi),
-        (path = "/", api = mod_environment::EnvironmentApi),
-        (path = "/", api = mod_health::HealthApi),
-        (path = "/", api = mod_finance::FinanceApi)
-    )
+    modifiers(&MergeModuleApis)
 )]
 pub struct ApiDoc;
 
@@ -181,6 +191,8 @@ pub fn build_router(state: AppState) -> Router {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    infra_db::load_env_files();
+
     tracing_subscriber::fmt()
         .with_env_filter(
             std::env::var("RUST_LOG").unwrap_or_else(|_| "api_server=info,tower_http=info".into()),
@@ -202,8 +214,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Ok(());
     }
 
-    let db_url = std::env::var("DATABASE_URL")
-        .unwrap_or_else(|_| "postgres://ternakmatric:ternakmatric@localhost:5432/ternakmatric".into());
+    let db_url = std::env::var("DATABASE_URL").unwrap_or_else(|_| {
+        "postgres://ternakmatric:ternakmatric@localhost:5432/ternakmatric".into()
+    });
     let pool = PgPoolOptions::new()
         .max_connections(16)
         .connect_lazy(&db_url)?;
@@ -230,14 +243,15 @@ mod tests {
     fn test_openapi_spec_builds_with_all_module_paths() {
         let spec = ApiDoc::openapi();
         let json = serde_json::to_string(&spec).unwrap();
-        assert!(json.contains("/api/v1/enclosures"));
-        assert!(json.contains("/api/v1/batches"));
-        assert!(json.contains("/api/v1/feeding"));
-        assert!(json.contains("/api/v1/environment/readings"));
-        assert!(json.contains("/api/v1/batches/{id}/vaccinations"));
-        assert!(json.contains("/api/v1/batches/{id}/financial-summary"));
-        assert!(json.contains("/api/v1/sync/push"));
-        assert!(json.contains("/api/v1/audit-logs"));
-        assert!(json.contains("/api/v1/farms/{id}"));
+        assert!(!json.contains("\"//"));
+        assert!(json.contains("\"/api/v1/enclosures\""));
+        assert!(json.contains("\"/api/v1/batches\""));
+        assert!(json.contains("\"/api/v1/feeding\""));
+        assert!(json.contains("\"/api/v1/environment/readings\""));
+        assert!(json.contains("\"/api/v1/batches/{id}/vaccinations\""));
+        assert!(json.contains("\"/api/v1/batches/{id}/financial-summary\""));
+        assert!(json.contains("\"/api/v1/sync/push\""));
+        assert!(json.contains("\"/api/v1/audit-logs\""));
+        assert!(json.contains("\"/api/v1/farms/{id}\""));
     }
 }

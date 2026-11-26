@@ -1,10 +1,12 @@
 const SERVER_AUTHORITATIVE_ENTITIES = new Set([
   "stock_movements",
+  "population_balances",
   "inventory_transactions",
   "inventory_transaction_lines",
+  "inventory_balances",
+  "production_outputs",
   "expenses",
   "sales",
-  "production_outputs",
   "feeding_records",
   "mortality_records",
 ]);

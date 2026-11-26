@@ -1,6 +1,6 @@
 # note-2 — Product Requirements Document
 
-> Catatan perjalanan desain. Versi terawat: [../docs/02-PRODUCT-REQUIREMENTS.md](../docs/02-PRODUCT-REQUIREMENTS.md). Indeks: [../docs/README.md](../docs/README.md).
+> Catatan perjalanan desain. Versi terawat: [../02-PRODUCT-REQUIREMENTS.md](../02-PRODUCT-REQUIREMENTS.md). Indeks: [../README.md](../README.md).
 
 Kita tetapkan TernakMatric sebagai produk **SaaS Multi-Tenant Animal Production Management Platform** yang mendukung ikan, unggas, babi, kambing/domba, sapi/kerbau, kelinci, crustacean, mollusk, serangga, dan spesies ternak lainnya, berbagai skala usaha, serta akses melalui web maupun mobile.
 
@@ -649,7 +649,7 @@ Keputusan akhir: backend TernakMatric ditulis dalam Rust, bukan Go maupun Spring
 
 ### Rekomendasi struktur repository
 
-Struktur direktori aktual tercantum di [`docs/09-REPOSITORY-STRUCTURE.md`](../docs/09-REPOSITORY-STRUCTURE.md). Catatan ini sengaja tidak memelihara salinan daftar direktori agar tidak kembali usang.
+Struktur direktori aktual tercantum di [`09-REPOSITORY-STRUCTURE.md`](../09-REPOSITORY-STRUCTURE.md). Catatan ini sengaja tidak memelihara salinan daftar direktori agar tidak kembali usang.
 
 ## 11. API Specification — Rancangan Endpoint
 

@@ -2,7 +2,7 @@
 
 - Status: Diterima
 - Tanggal: 2026-11-24
-- Terkait: `note-2.md` (organization_members, RBAC per tenant), `note-3.md` (RLS, composite FK), [`note-4-migration-audit.md`](../../notes/note-4-migration-audit.md) (status implementasi)
+- Terkait: `note-2.md` (organization_members, RBAC per tenant), `note-3.md` (RLS, composite FK), [`note-4-migration-audit.md`](../notes/note-4-migration-audit.md) (status implementasi)
 
 ## Konteks
 

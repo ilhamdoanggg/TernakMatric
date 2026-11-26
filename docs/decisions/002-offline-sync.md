@@ -2,7 +2,7 @@
 
 - Status: Diterima
 - Tanggal: 2026-11-24
-- Terkait: `note-2.md` (idempotency), `note-3.md` (full offline sync, ledger, conflict resolution), [`note-4-migration-audit.md`](../../notes/note-4-migration-audit.md) (status implementasi dan utang)
+- Terkait: `note-2.md` (idempotency), `note-3.md` (full offline sync, ledger, conflict resolution), [`note-4-migration-audit.md`](../notes/note-4-migration-audit.md) (status implementasi dan utang)
 
 ## Konteks
 
@@ -47,6 +47,6 @@ Mobile dipakai operator di lapangan/kandang/kolam dan harus tetap bisa mencatat 
 Keputusan di atas tetap berlaku dengan penyesuaian berikut:
 
 - Field yang dipakai migrasi adalah `device_occurred_at`, bukan `occurred_at` (`2026112407_init_offline_sync.sql`).
-- Daftar entity yang dilarang `client_wins` di constraint `sync_conflicts` belum memuat `population_balances` dan `inventory_balances`; lihat F-05 di `note-4`.
+- Daftar entity yang dilarang `client_wins` sudah memuat `population_balances` dan `inventory_balances` di `2026112407_init_offline_sync.sql`, `infra-auth/src/sync.rs`, serta `apps/mobile/src/offline/conflictPolicy.ts`.
 - Worker saat ini menjalankan snapshot biomassa dan reminder vaksin; pemrosesan queue sync/rekonsiliasi ledger belum diimplementasikan.
-- Status lengkap dan usulan migrasi korektif ada di [`../../notes/note-4-migration-audit.md`](../../notes/note-4-migration-audit.md).
+- Status lengkap dan riwayat perbaikan ada di [`../notes/note-4-migration-audit.md`](../notes/note-4-migration-audit.md).

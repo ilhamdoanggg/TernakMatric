@@ -25,12 +25,16 @@ CREATE TABLE environment_readings (
   version integer NOT NULL DEFAULT 1 CHECK (version > 0),
   created_by uuid REFERENCES users(id),
   created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  updated_by uuid REFERENCES users(id),
   FOREIGN KEY (unit_id, organization_id) REFERENCES production_units(id, organization_id),
   FOREIGN KEY (batch_id, organization_id) REFERENCES production_batches(id, organization_id)
 );
 
 CREATE INDEX idx_environment_readings_unit_time
   ON environment_readings(organization_id, unit_id, measured_at DESC);
+CREATE INDEX idx_environment_readings_batch_time
+  ON environment_readings(organization_id, batch_id, measured_at DESC);
 
 CREATE TABLE health_records (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -45,9 +49,14 @@ CREATE TABLE health_records (
   version integer NOT NULL DEFAULT 1 CHECK (version > 0),
   created_by uuid REFERENCES users(id),
   created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  updated_by uuid REFERENCES users(id),
   UNIQUE (id, organization_id),
   FOREIGN KEY (batch_id, organization_id) REFERENCES production_batches(id, organization_id)
 );
+
+CREATE INDEX idx_health_records_batch_time
+  ON health_records(organization_id, batch_id, observed_at DESC);
 
 CREATE TABLE vaccination_schedules (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -68,6 +77,7 @@ CREATE TABLE vaccination_schedules (
   created_by uuid REFERENCES users(id),
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
+  updated_by uuid REFERENCES users(id),
   UNIQUE (id, organization_id),
   FOREIGN KEY (batch_id, organization_id) REFERENCES production_batches(id, organization_id),
   FOREIGN KEY (health_record_id, organization_id) REFERENCES health_records(id, organization_id)
@@ -75,6 +85,8 @@ CREATE TABLE vaccination_schedules (
 
 CREATE INDEX idx_vaccination_due
   ON vaccination_schedules(organization_id, status, scheduled_date);
+CREATE INDEX idx_vaccination_batch_date
+  ON vaccination_schedules(organization_id, batch_id, scheduled_date);
 
 CREATE TABLE mortality_records (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -88,11 +100,16 @@ CREATE TABLE mortality_records (
   version integer NOT NULL DEFAULT 1 CHECK (version > 0),
   created_by uuid REFERENCES users(id),
   created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  updated_by uuid REFERENCES users(id),
   FOREIGN KEY (batch_id, organization_id) REFERENCES production_batches(id, organization_id),
   FOREIGN KEY (stock_movement_id, organization_id)
     REFERENCES stock_movements(id, organization_id),
   UNIQUE (organization_id, stock_movement_id)
 );
+
+CREATE INDEX idx_mortality_records_batch_time
+  ON mortality_records(organization_id, batch_id, occurred_at DESC);
 
 CREATE TABLE biosecurity_logs (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -110,6 +127,8 @@ CREATE TABLE biosecurity_logs (
   notes text,
   created_by uuid REFERENCES users(id),
   created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  updated_by uuid REFERENCES users(id),
   UNIQUE (id, organization_id),
   FOREIGN KEY (farm_id, organization_id) REFERENCES farms(id, organization_id),
   FOREIGN KEY (unit_id, organization_id) REFERENCES production_units(id, organization_id)

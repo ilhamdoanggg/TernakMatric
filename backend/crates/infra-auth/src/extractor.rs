@@ -23,7 +23,11 @@ fn extract_bearer(parts: &Parts) -> Result<&str, ApiError> {
         .headers
         .get(axum::http::header::AUTHORIZATION)
         .and_then(|v| v.to_str().ok())
-        .ok_or_else(|| ApiError(AppError::Unauthorized("missing Authorization header".into())))?;
+        .ok_or_else(|| {
+            ApiError(AppError::Unauthorized(
+                "missing Authorization header".into(),
+            ))
+        })?;
     header
         .strip_prefix("Bearer ")
         .ok_or_else(|| ApiError(AppError::Unauthorized("expected Bearer token".into())))
@@ -56,8 +60,11 @@ impl<S: AppBackendState> FromRequestParts<S> for AuthPrincipal {
                     "missing X-Organization-Id header".into(),
                 ))
             })?;
-        let org_uuid = Uuid::parse_str(org_raw)
-            .map_err(|_| ApiError(AppError::Validation("invalid X-Organization-Id UUID".into())))?;
+        let org_uuid = Uuid::parse_str(org_raw).map_err(|_| {
+            ApiError(AppError::Validation(
+                "invalid X-Organization-Id UUID".into(),
+            ))
+        })?;
 
         verify_membership_and_permissions(state.pool(), user.user_id, OrganizationId(org_uuid))
             .await

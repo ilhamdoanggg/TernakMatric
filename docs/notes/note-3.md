@@ -1,6 +1,6 @@
 # note-3 — Database Architecture dan Final Data Modeling
 
-> Catatan perjalanan desain. Versi terawat: [../docs/05-DOMAIN-MODEL.md](../docs/05-DOMAIN-MODEL.md). Indeks: [../docs/README.md](../docs/README.md).
+> Catatan perjalanan desain. Versi terawat: [../05-DOMAIN-MODEL.md](../05-DOMAIN-MODEL.md). Indeks: [../README.md](../README.md).
 
 Kita lanjutkan TernakMatric ke tahap **Database Architecture & Final Data Modeling**.
 

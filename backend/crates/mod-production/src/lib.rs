@@ -156,7 +156,11 @@ pub async fn list_batches<S: AppBackendState>(
     State(state): State<S>,
     auth: AuthPrincipal,
 ) -> Result<Json<Vec<BatchDto>>, ApiError> {
-    let mut tx = auth.context().begin_tx(state.pool()).await.map_err(ApiError)?;
+    let mut tx = auth
+        .context()
+        .begin_tx(state.pool())
+        .await
+        .map_err(ApiError)?;
     let rows: Vec<BatchDto> = sqlx::query_as(
         r#"
         SELECT id, organization_id, batch_code, species_id, production_profile_id,
@@ -187,14 +191,19 @@ pub async fn create_batch<S: AppBackendState>(
     auth: AuthPrincipal,
     Json(req): Json<CreateBatchRequest>,
 ) -> Result<(axum::http::StatusCode, Json<BatchDto>), ApiError> {
-    auth.require(Permission::ProductionWrite).map_err(ApiError)?;
+    auth.require(Permission::ProductionWrite)
+        .map_err(ApiError)?;
     if req.initial_count <= 0 {
         return Err(ApiError(AppError::Validation(
             "initial_count must be > 0".into(),
         )));
     }
 
-    let mut tx = auth.context().begin_tx(state.pool()).await.map_err(ApiError)?;
+    let mut tx = auth
+        .context()
+        .begin_tx(state.pool())
+        .await
+        .map_err(ApiError)?;
 
     let unit_cap: Option<(Option<Decimal>, Option<String>)> = sqlx::query_as(
         "SELECT capacity_value, capacity_unit FROM production_units WHERE organization_id = $1 AND id = $2 FOR UPDATE",
@@ -329,7 +338,7 @@ pub async fn create_batch<S: AppBackendState>(
 
     AuditLogger::record(
         &mut tx,
-        Some(auth.organization_id),
+        auth.organization_id,
         Some(auth.user_id),
         "batch.created",
         "production_batches",
@@ -358,8 +367,13 @@ pub async fn update_batch<S: AppBackendState>(
     Path(id): Path<Uuid>,
     Json(req): Json<UpdateBatchRequest>,
 ) -> Result<Json<BatchDto>, ApiError> {
-    auth.require(Permission::ProductionWrite).map_err(ApiError)?;
-    let mut tx = auth.context().begin_tx(state.pool()).await.map_err(ApiError)?;
+    auth.require(Permission::ProductionWrite)
+        .map_err(ApiError)?;
+    let mut tx = auth
+        .context()
+        .begin_tx(state.pool())
+        .await
+        .map_err(ApiError)?;
 
     let before: BatchDto = sqlx::query_as(
         r#"
@@ -401,7 +415,7 @@ pub async fn update_batch<S: AppBackendState>(
 
     AuditLogger::record(
         &mut tx,
-        Some(auth.organization_id),
+        auth.organization_id,
         Some(auth.user_id),
         "batch.updated",
         "production_batches",
@@ -430,8 +444,13 @@ pub async fn record_stock_movement<S: AppBackendState>(
     Path(batch_id): Path<Uuid>,
     Json(req): Json<StockMovementRequest>,
 ) -> Result<(axum::http::StatusCode, Json<StockMovementResponse>), ApiError> {
-    auth.require(Permission::ProductionWrite).map_err(ApiError)?;
-    let mut tx = auth.context().begin_tx(state.pool()).await.map_err(ApiError)?;
+    auth.require(Permission::ProductionWrite)
+        .map_err(ApiError)?;
+    let mut tx = auth
+        .context()
+        .begin_tx(state.pool())
+        .await
+        .map_err(ApiError)?;
 
     let current_qty: i32 = sqlx::query_scalar(
         "SELECT quantity FROM population_balances WHERE organization_id = $1 AND batch_id = $2 FOR UPDATE",
@@ -491,7 +510,7 @@ pub async fn record_stock_movement<S: AppBackendState>(
 
     AuditLogger::record(
         &mut tx,
-        Some(auth.organization_id),
+        auth.organization_id,
         Some(auth.user_id),
         "stock_movement.recorded",
         "stock_movements",
@@ -527,7 +546,11 @@ pub async fn list_individual_tags<S: AppBackendState>(
     auth: AuthPrincipal,
     Path(batch_id): Path<Uuid>,
 ) -> Result<Json<Vec<IndividualTagDto>>, ApiError> {
-    let mut tx = auth.context().begin_tx(state.pool()).await.map_err(ApiError)?;
+    let mut tx = auth
+        .context()
+        .begin_tx(state.pool())
+        .await
+        .map_err(ApiError)?;
     let rows: Vec<IndividualTagDto> = sqlx::query_as(
         r#"
         SELECT id, batch_id, tag_code, tag_type, sex, birth_date, initial_weight_g, status,
@@ -560,8 +583,13 @@ pub async fn register_individual_tag<S: AppBackendState>(
     Path(batch_id): Path<Uuid>,
     Json(req): Json<RegisterTagRequest>,
 ) -> Result<(axum::http::StatusCode, Json<IndividualTagDto>), ApiError> {
-    auth.require(Permission::ProductionWrite).map_err(ApiError)?;
-    let mut tx = auth.context().begin_tx(state.pool()).await.map_err(ApiError)?;
+    auth.require(Permission::ProductionWrite)
+        .map_err(ApiError)?;
+    let mut tx = auth
+        .context()
+        .begin_tx(state.pool())
+        .await
+        .map_err(ApiError)?;
     let row: IndividualTagDto = sqlx::query_as(
         r#"
         INSERT INTO individual_tags (
@@ -605,11 +633,20 @@ pub async fn record_growth_sample<S: AppBackendState>(
     Path(batch_id): Path<Uuid>,
     Json(req): Json<CreateGrowthSampleRequest>,
 ) -> Result<(axum::http::StatusCode, Json<GrowthSampleResponse>), ApiError> {
-    auth.require(Permission::ProductionWrite).map_err(ApiError)?;
-    let abw = compute_abw_g(req.total_sample_weight_g, req.sample_count as i64, Utc::now())
-        .map_err(|e| ApiError(AppError::Validation(e.to_string())))?;
+    auth.require(Permission::ProductionWrite)
+        .map_err(ApiError)?;
+    let abw = compute_abw_g(
+        req.total_sample_weight_g,
+        req.sample_count as i64,
+        Utc::now(),
+    )
+    .map_err(|e| ApiError(AppError::Validation(e.to_string())))?;
 
-    let mut tx = auth.context().begin_tx(state.pool()).await.map_err(ApiError)?;
+    let mut tx = auth
+        .context()
+        .begin_tx(state.pool())
+        .await
+        .map_err(ApiError)?;
     let prev: Option<(DateTime<Utc>, Option<Decimal>)> = sqlx::query_as(
         r#"
         SELECT sampled_at, average_weight_g
@@ -718,8 +755,13 @@ pub async fn record_output<S: AppBackendState>(
     Path(batch_id): Path<Uuid>,
     Json(req): Json<CreateOutputRequest>,
 ) -> Result<(axum::http::StatusCode, Json<OutputResponse>), ApiError> {
-    auth.require(Permission::ProductionWrite).map_err(ApiError)?;
-    let mut tx = auth.context().begin_tx(state.pool()).await.map_err(ApiError)?;
+    auth.require(Permission::ProductionWrite)
+        .map_err(ApiError)?;
+    let mut tx = auth
+        .context()
+        .begin_tx(state.pool())
+        .await
+        .map_err(ApiError)?;
 
     let mut movement_id: Option<Uuid> = None;
     if req.output_type.reduces_population_when_harvested() {
@@ -811,7 +853,7 @@ pub async fn record_output<S: AppBackendState>(
 
     AuditLogger::record(
         &mut tx,
-        Some(auth.organization_id),
+        auth.organization_id,
         Some(auth.user_id),
         "output.recorded",
         "production_outputs",
@@ -861,11 +903,28 @@ pub fn router<S: AppBackendState>() -> Router<S> {
 
 #[derive(OpenApi)]
 #[openapi(
-    paths(list_batches, create_batch, update_batch, record_stock_movement, list_individual_tags, register_individual_tag, record_growth_sample, record_output),
+    paths(
+        list_batches,
+        create_batch,
+        update_batch,
+        record_stock_movement,
+        list_individual_tags,
+        register_individual_tag,
+        record_growth_sample,
+        record_output
+    ),
     components(schemas(
-        CreateBatchRequest, UpdateBatchRequest, BatchDto, StockMovementRequest, StockMovementResponse,
-        RegisterTagRequest, IndividualTagDto, CreateGrowthSampleRequest, GrowthSampleResponse,
-        CreateOutputRequest, OutputResponse
+        CreateBatchRequest,
+        UpdateBatchRequest,
+        BatchDto,
+        StockMovementRequest,
+        StockMovementResponse,
+        RegisterTagRequest,
+        IndividualTagDto,
+        CreateGrowthSampleRequest,
+        GrowthSampleResponse,
+        CreateOutputRequest,
+        OutputResponse
     ))
 )]
 pub struct ProductionApi;

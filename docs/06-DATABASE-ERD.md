@@ -2,9 +2,9 @@
 
 **Dokumen**: `TM-DOC-06` · **Status**: Baseline v1.0, diselaraskan 2026-11-26 · **Tanggal**: 2026-11-24
 
-Dokumen ini merangkum desain skema fisik PostgreSQL 16+ pada [`data/001_ternakmatric_schema.sql`](../data/001_ternakmatric_schema.sql) beserta perluasan modul `mod-production` (`individual_tags`) dan `mod-health` (`vaccination_schedules`, `biosecurity_logs`) yang diimplementasikan di `backend/migrations/`.
+Dokumen ini merangkum desain skema fisik PostgreSQL 16+ pada [`backend/migrations/`](../backend/migrations/) (yang menggabungkan rancangan awal, modul `mod-production`/`mod-health`, seed katalog, dan *hardening* RLS).
 
-> **Status skema**: `data/` adalah **baseline referensi** untuk nama tabel/kolom; `backend/migrations/` adalah schema yang benar-benar dipasang. Selisih keduanya dan utang teknisnya tercatat di [`../notes/note-4-migration-audit.md`](../notes/note-4-migration-audit.md). Tabel ERD di bawah mencerminkan gabungan keduanya.
+> **Status skema**: seluruh DDL, seed global, trigger audit, dan kebijakan RLS telah disatukan ke `backend/migrations/` (`2026112401`–`2026112409`). Kamus data tersimpan di [`data/DATA_DICTIONARY.md`](data/DATA_DICTIONARY.md) dan riwayat audit di [`notes/note-4-migration-audit.md`](notes/note-4-migration-audit.md).
 
 ---
 
@@ -88,8 +88,7 @@ erDiagram
 | `2026112405_init_environment_health.sql` | `environment_metrics`, `environment_readings`, `vaccination_schedules`, `health_records`, `mortality_records`, `biosecurity_logs` |
 | `2026112406_init_finance_calculation.sql` | `expense_categories`, `expenses`, `sales`, `sale_items`, `calculation_versions`, `calculation_runs`, `audit_logs` |
 | `2026112407_init_offline_sync.sql` | `devices`, `sync_operations`, `sync_conflicts`, `outbox_events` |
-| `2026112408_rls_triggers_hardening.sql` | Trigger cross-tenant, trigger *append-only ledger*, `set_updated_at`, dan kebijakan RLS seluruh tabel |
-| `2026112409_seed_catalogs.sql` | Data referensi global: `unit_types`, `production_systems`, `species` (8 kategori), `environment_metrics`, `plans`, `expense_categories`, `calculation_versions` (termasuk `SGR` & `HPP_LIVE_WEIGHT`) |
-| `2026112410_audit_actor_columns.sql` | Kolom `created_by`, `updated_at`, `updated_by` seragam + trigger otomatis `current_user_id()` (`SET LOCAL app.current_user_id`) |
+| `2026112408_seed_catalogs.sql` | Seed global sebelum RLS hardening (tanpa `BYPASSRLS`): `roles`, `permissions`, `role_permissions`, `unit_types`, `production_systems`, `species` (39 katalog), `environment_metrics`, `plans`, `expense_categories`, dan 23 formula `calculation_versions` |
+| `2026112409_rls_triggers_hardening.sql` | Guard cross-tenant (`assert_global_or_tenant_ref`), trigger *append-only* (`stock_movements`, `inventory_transaction_lines`, `production_outputs`, `audit_logs`, serta `inventory_transactions` menjaga transisi `draft`), trigger `set_created_by` & `set_updated_audit`, serta kebijakan `ENABLE` + `FORCE ROW LEVEL SECURITY` termasuk policy `SELECT` `organization_members` berbasis `current_user_id()` |
 
-Detail kontrak tiap kolom tersedia pada [Schema SQL](../data/001_ternakmatric_schema.sql) dan [Data Dictionary](../data/DATA_DICTIONARY.md). File migrasi bersifat immutable setelah di-apply; perbaikan dibuat sebagai file `2026112411_...` sesuai temuan di `note-4`.
+Detail kontrak tiap kolom tersedia pada [`backend/migrations/`](../backend/migrations/) dan [`data/DATA_DICTIONARY.md`](data/DATA_DICTIONARY.md). File migrasi bersifat immutable setelah di-apply; penambahan schema berikutnya dibuat sebagai file `2026112410_...`.

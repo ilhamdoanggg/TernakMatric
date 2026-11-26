@@ -27,7 +27,9 @@ CREATE TABLE farms (
   status text NOT NULL DEFAULT 'active' CHECK (status IN ('active','inactive')),
   version integer NOT NULL DEFAULT 1 CHECK (version > 0),
   created_at timestamptz NOT NULL DEFAULT now(),
+  created_by uuid REFERENCES users(id),
   updated_at timestamptz NOT NULL DEFAULT now(),
+  updated_by uuid REFERENCES users(id),
   UNIQUE (organization_id, code),
   UNIQUE (id, organization_id),
   CHECK (latitude IS NULL OR latitude BETWEEN -90 AND 90),
@@ -42,6 +44,7 @@ CREATE TABLE production_units (
   name varchar(160) NOT NULL,
   unit_type_id uuid NOT NULL REFERENCES unit_types(id),
   production_system_id uuid REFERENCES production_systems(id),
+  -- Optional geometry dimensions live in jsonb; area_m2 and volume_m3 store derived values.
   dimensions jsonb NOT NULL DEFAULT '{}'::jsonb,
   capacity_value numeric(14,3),
   capacity_unit text CHECK (capacity_unit IN ('head','kg','m3','m2','tray','crate','colony','hive')),
@@ -50,15 +53,17 @@ CREATE TABLE production_units (
   status text NOT NULL DEFAULT 'active' CHECK (status IN ('active','inactive','maintenance')),
   version integer NOT NULL DEFAULT 1 CHECK (version > 0),
   created_at timestamptz NOT NULL DEFAULT now(),
+  created_by uuid REFERENCES users(id),
   updated_at timestamptz NOT NULL DEFAULT now(),
+  updated_by uuid REFERENCES users(id),
   UNIQUE (organization_id, code),
   UNIQUE (id, organization_id),
   FOREIGN KEY (farm_id, organization_id) REFERENCES farms(id, organization_id),
   CHECK ((capacity_value IS NULL AND capacity_unit IS NULL)
       OR (capacity_value IS NOT NULL AND capacity_unit IS NOT NULL)),
   CHECK (capacity_value IS NULL OR capacity_value > 0),
-  CHECK (area_m2 IS NULL OR area_m2 >= 0),
-  CHECK (volume_m3 IS NULL OR volume_m3 >= 0)
+  CHECK (area_m2 IS NULL OR area_m2 > 0),
+  CHECK (volume_m3 IS NULL OR volume_m3 > 0)
 );
 
 CREATE INDEX idx_production_units_farm ON production_units(organization_id, farm_id);
@@ -76,6 +81,9 @@ CREATE TABLE species (
   is_system boolean NOT NULL DEFAULT false,
   is_active boolean NOT NULL DEFAULT true,
   created_at timestamptz NOT NULL DEFAULT now(),
+  created_by uuid REFERENCES users(id),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  updated_by uuid REFERENCES users(id),
   UNIQUE NULLS NOT DISTINCT (organization_id, code),
   UNIQUE (id, organization_id),
   CHECK ((is_system AND organization_id IS NULL) OR (NOT is_system AND organization_id IS NOT NULL))
@@ -88,16 +96,23 @@ CREATE TABLE species_production_profiles (
   code varchar(80) NOT NULL,
   name varchar(140) NOT NULL,
   production_system_id uuid REFERENCES production_systems(id),
+  -- Density, temperature, humidity, pH, DO, NH3, roughage ratio, etc. are stored per version.
   parameters jsonb NOT NULL DEFAULT '{}'::jsonb,
   version integer NOT NULL DEFAULT 1 CHECK (version > 0),
   is_active boolean NOT NULL DEFAULT true,
   valid_from timestamptz NOT NULL DEFAULT now(),
   valid_until timestamptz,
   created_at timestamptz NOT NULL DEFAULT now(),
+  created_by uuid REFERENCES users(id),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  updated_by uuid REFERENCES users(id),
   UNIQUE (id, organization_id),
   UNIQUE (organization_id, code, version),
   CHECK (valid_until IS NULL OR valid_until > valid_from)
 );
+
+CREATE INDEX idx_species_profiles_org_species
+  ON species_production_profiles(organization_id, species_id, is_active);
 
 CREATE TABLE growth_stages (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -109,15 +124,24 @@ CREATE TABLE growth_stages (
   min_age_days integer,
   max_age_days integer,
   sort_order integer NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  created_by uuid REFERENCES users(id),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  updated_by uuid REFERENCES users(id),
   FOREIGN KEY (production_profile_id, organization_id)
     REFERENCES species_production_profiles(id, organization_id),
   UNIQUE (id, organization_id),
   UNIQUE (production_profile_id, sort_order),
   CHECK (min_weight_g IS NULL OR min_weight_g >= 0),
-  CHECK (max_weight_g IS NULL OR max_weight_g >= min_weight_g),
+  CHECK (max_weight_g IS NULL OR max_weight_g >= 0),
+  CHECK (max_weight_g IS NULL OR min_weight_g IS NULL OR max_weight_g >= min_weight_g),
   CHECK (min_age_days IS NULL OR min_age_days >= 0),
-  CHECK (max_age_days IS NULL OR max_age_days >= min_age_days)
+  CHECK (max_age_days IS NULL OR max_age_days >= 0),
+  CHECK (max_age_days IS NULL OR min_age_days IS NULL OR max_age_days >= min_age_days)
 );
+
+CREATE INDEX idx_growth_stages_org_profile
+  ON growth_stages(organization_id, production_profile_id, sort_order);
 
 CREATE TABLE feeding_guidelines (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -135,7 +159,13 @@ CREATE TABLE feeding_guidelines (
   valid_from timestamptz NOT NULL DEFAULT now(),
   valid_until timestamptz,
   created_at timestamptz NOT NULL DEFAULT now(),
+  created_by uuid REFERENCES users(id),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  updated_by uuid REFERENCES users(id),
   FOREIGN KEY (growth_stage_id, organization_id)
     REFERENCES growth_stages(id, organization_id),
   CHECK (valid_until IS NULL OR valid_until > valid_from)
 );
+
+CREATE INDEX idx_feeding_guidelines_org_stage
+  ON feeding_guidelines(organization_id, growth_stage_id);

@@ -11,6 +11,9 @@ CREATE TABLE devices (
   last_seen_at timestamptz,
   revoked_at timestamptz,
   created_at timestamptz NOT NULL DEFAULT now(),
+  created_by uuid REFERENCES users(id),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  updated_by uuid REFERENCES users(id),
   UNIQUE (organization_id, device_public_id),
   UNIQUE (id, organization_id)
 );
@@ -30,6 +33,8 @@ CREATE TABLE sync_operations (
   received_at timestamptz NOT NULL DEFAULT now(),
   processed_at timestamptz,
   response_payload jsonb,
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  updated_by uuid REFERENCES users(id),
   FOREIGN KEY (device_id, organization_id) REFERENCES devices(id, organization_id),
   UNIQUE (organization_id, device_id, client_operation_id),
   UNIQUE (id, organization_id)
@@ -48,20 +53,34 @@ CREATE TABLE sync_conflicts (
   resolved_by uuid REFERENCES users(id),
   resolved_at timestamptz,
   created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  updated_by uuid REFERENCES users(id),
   FOREIGN KEY (sync_operation_id, organization_id)
     REFERENCES sync_operations(id, organization_id),
+  -- Server-authoritative ledgers, projections, and financial records forbid client_wins.
   CHECK (
     resolution IS NULL
     OR resolution <> 'client_wins'
     OR entity_type NOT IN (
-      'stock_movements','inventory_transactions','inventory_transaction_lines',
-      'expenses','sales','production_outputs','feeding_records','mortality_records'
+      'stock_movements',
+      'population_balances',
+      'inventory_transactions',
+      'inventory_transaction_lines',
+      'inventory_balances',
+      'production_outputs',
+      'expenses',
+      'sales',
+      'feeding_records',
+      'mortality_records'
     )
   )
 );
 
 CREATE INDEX idx_sync_pending ON sync_operations(organization_id, status, received_at);
 CREATE INDEX idx_sync_entity ON sync_operations(organization_id, entity_type, entity_id);
+CREATE INDEX idx_sync_conflicts_unresolved
+  ON sync_conflicts(organization_id, created_at DESC)
+  WHERE resolved_at IS NULL;
 
 CREATE TABLE outbox_events (
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -71,7 +90,8 @@ CREATE TABLE outbox_events (
   event_type varchar(100) NOT NULL,
   payload jsonb NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now(),
-  published_at timestamptz
+  published_at timestamptz,
+  updated_at timestamptz NOT NULL DEFAULT now()
 );
 
 CREATE INDEX idx_outbox_unpublished
