@@ -1,9 +1,9 @@
 use axum::extract::{Path, State};
-use axum::routing::{get, post};
+use axum::routing::{get, patch, post};
 use axum::{Json, Router};
 use chrono::{DateTime, NaiveDate, Utc};
 use infra_auth::{ApiError, AppBackendState, AuthPrincipal, Permission};
-use infra_db::{map_sqlx_err, OutboxWriter};
+use infra_db::{map_sqlx_err, AuditLogger, OutboxWriter};
 use mod_calculation::{
     compute_abw_g, compute_adg_g_per_day, compute_biomass_kg, compute_sgr_percent_per_day,
     evaluate_enclosure_capacity, CohortBiomassInput,
@@ -28,6 +28,13 @@ pub struct CreateBatchRequest {
     pub idempotency_key: Uuid,
 }
 
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct UpdateBatchRequest {
+    pub target_end_date: Option<NaiveDate>,
+    pub status: Option<String>,
+    pub notes: Option<String>,
+}
+
 #[derive(Debug, Serialize, Deserialize, ToSchema, sqlx::FromRow)]
 pub struct BatchDto {
     pub id: Uuid,
@@ -40,8 +47,12 @@ pub struct BatchDto {
     pub initial_count: i32,
     pub initial_avg_weight_g: Option<Decimal>,
     pub status: String,
+    pub notes: Option<String>,
     pub version: i32,
     pub created_at: DateTime<Utc>,
+    pub created_by: Option<Uuid>,
+    pub updated_at: DateTime<Utc>,
+    pub updated_by: Option<Uuid>,
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
@@ -58,6 +69,8 @@ pub struct StockMovementResponse {
     pub id: Uuid,
     pub batch_id: Uuid,
     pub current_population: i32,
+    pub created_at: DateTime<Utc>,
+    pub created_by: Option<Uuid>,
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
@@ -83,6 +96,9 @@ pub struct IndividualTagDto {
     pub initial_weight_g: Option<Decimal>,
     pub status: String,
     pub created_at: DateTime<Utc>,
+    pub created_by: Option<Uuid>,
+    pub updated_at: DateTime<Utc>,
+    pub updated_by: Option<Uuid>,
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
@@ -102,6 +118,8 @@ pub struct GrowthSampleResponse {
     pub adg_g_per_day: Option<Decimal>,
     pub sgr_percent_per_day: Option<Decimal>,
     pub estimated_biomass_kg: Option<Decimal>,
+    pub created_at: DateTime<Utc>,
+    pub created_by: Option<Uuid>,
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
@@ -124,6 +142,8 @@ pub struct OutputResponse {
     pub output_type: OutputType,
     pub quantity: Decimal,
     pub unit: String,
+    pub created_at: DateTime<Utc>,
+    pub created_by: Option<Uuid>,
 }
 
 #[utoipa::path(
@@ -140,7 +160,8 @@ pub async fn list_batches<S: AppBackendState>(
     let rows: Vec<BatchDto> = sqlx::query_as(
         r#"
         SELECT id, organization_id, batch_code, species_id, production_profile_id,
-               start_date, target_end_date, initial_count, initial_avg_weight_g, status, version, created_at
+               start_date, target_end_date, initial_count, initial_avg_weight_g, status, notes, version,
+               created_at, created_by, updated_at, updated_by
         FROM production_batches
         WHERE organization_id = $1
         ORDER BY created_at DESC
@@ -175,7 +196,6 @@ pub async fn create_batch<S: AppBackendState>(
 
     let mut tx = auth.context().begin_tx(state.pool()).await.map_err(ApiError)?;
 
-    // Row-lock enclosure and validate multi-batch capacity if capacity_value is set.
     let unit_cap: Option<(Option<Decimal>, Option<String>)> = sqlx::query_as(
         "SELECT capacity_value, capacity_unit FROM production_units WHERE organization_id = $1 AND id = $2 FOR UPDATE",
     )
@@ -232,7 +252,8 @@ pub async fn create_batch<S: AppBackendState>(
         )
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'active', $9, $10)
         RETURNING id, organization_id, batch_code, species_id, production_profile_id,
-                  start_date, target_end_date, initial_count, initial_avg_weight_g, status, version, created_at
+                  start_date, target_end_date, initial_count, initial_avg_weight_g, status, notes, version,
+                  created_at, created_by, updated_at, updated_by
         "#,
     )
     .bind(auth.organization_id.0)
@@ -251,14 +272,15 @@ pub async fn create_batch<S: AppBackendState>(
 
     sqlx::query(
         r#"
-        INSERT INTO batch_unit_assignments (organization_id, batch_id, unit_id, assigned_at, allocated_count)
-        VALUES ($1, $2, $3, now(), $4)
+        INSERT INTO batch_unit_assignments (organization_id, batch_id, unit_id, assigned_at, allocated_count, created_by)
+        VALUES ($1, $2, $3, now(), $4, $5)
         "#,
     )
     .bind(auth.organization_id.0)
     .bind(batch.id)
     .bind(req.enclosure_id)
     .bind(req.initial_count)
+    .bind(auth.user_id.0)
     .execute(&mut *tx)
     .await
     .map_err(|e| ApiError(map_sqlx_err(e)))?;
@@ -282,13 +304,14 @@ pub async fn create_batch<S: AppBackendState>(
 
     sqlx::query(
         r#"
-        INSERT INTO population_balances (organization_id, batch_id, quantity)
-        VALUES ($1, $2, $3)
+        INSERT INTO population_balances (organization_id, batch_id, quantity, updated_by)
+        VALUES ($1, $2, $3, $4)
         "#,
     )
     .bind(auth.organization_id.0)
     .bind(batch.id)
     .bind(req.initial_count)
+    .bind(auth.user_id.0)
     .execute(&mut *tx)
     .await
     .map_err(|e| ApiError(map_sqlx_err(e)))?;
@@ -304,8 +327,93 @@ pub async fn create_batch<S: AppBackendState>(
     .await
     .map_err(ApiError)?;
 
+    AuditLogger::record(
+        &mut tx,
+        Some(auth.organization_id),
+        Some(auth.user_id),
+        "batch.created",
+        "production_batches",
+        Some(batch.id),
+        None,
+        Some(serde_json::to_value(&batch).unwrap_or_default()),
+    )
+    .await
+    .map_err(ApiError)?;
+
     tx.commit().await.map_err(|e| ApiError(map_sqlx_err(e)))?;
     Ok((axum::http::StatusCode::CREATED, Json(batch)))
+}
+
+#[utoipa::path(
+    patch,
+    path = "/api/v1/batches/{id}",
+    params(("id" = Uuid, Path, description = "Batch ID")),
+    request_body = UpdateBatchRequest,
+    responses((status = 200, body = BatchDto)),
+    tag = "Production"
+)]
+pub async fn update_batch<S: AppBackendState>(
+    State(state): State<S>,
+    auth: AuthPrincipal,
+    Path(id): Path<Uuid>,
+    Json(req): Json<UpdateBatchRequest>,
+) -> Result<Json<BatchDto>, ApiError> {
+    auth.require(Permission::ProductionWrite).map_err(ApiError)?;
+    let mut tx = auth.context().begin_tx(state.pool()).await.map_err(ApiError)?;
+
+    let before: BatchDto = sqlx::query_as(
+        r#"
+        SELECT id, organization_id, batch_code, species_id, production_profile_id,
+               start_date, target_end_date, initial_count, initial_avg_weight_g, status, notes, version,
+               created_at, created_by, updated_at, updated_by
+        FROM production_batches WHERE organization_id = $1 AND id = $2 FOR UPDATE
+        "#,
+    )
+    .bind(auth.organization_id.0)
+    .bind(id)
+    .fetch_one(&mut *tx)
+    .await
+    .map_err(|e| ApiError(map_sqlx_err(e)))?;
+
+    let after: BatchDto = sqlx::query_as(
+        r#"
+        UPDATE production_batches
+        SET target_end_date = COALESCE($3, target_end_date),
+            status = COALESCE($4, status),
+            notes = COALESCE($5, notes),
+            version = version + 1,
+            updated_by = $6
+        WHERE organization_id = $1 AND id = $2
+        RETURNING id, organization_id, batch_code, species_id, production_profile_id,
+                  start_date, target_end_date, initial_count, initial_avg_weight_g, status, notes, version,
+                  created_at, created_by, updated_at, updated_by
+        "#,
+    )
+    .bind(auth.organization_id.0)
+    .bind(id)
+    .bind(req.target_end_date)
+    .bind(&req.status)
+    .bind(&req.notes)
+    .bind(auth.user_id.0)
+    .fetch_one(&mut *tx)
+    .await
+    .map_err(|e| ApiError(map_sqlx_err(e)))?;
+
+    AuditLogger::record(
+        &mut tx,
+        Some(auth.organization_id),
+        Some(auth.user_id),
+        "batch.updated",
+        "production_batches",
+        Some(id),
+        Some(serde_json::to_value(&before).unwrap_or_default()),
+        Some(serde_json::to_value(&after).unwrap_or_default()),
+    )
+    .await
+    .map_err(ApiError)?;
+
+    tx.commit().await.map_err(|e| ApiError(map_sqlx_err(e)))?;
+    Ok(Json(after))
 }
 
 #[utoipa::path(
@@ -347,13 +455,13 @@ pub async fn record_stock_movement<S: AppBackendState>(
         current_qty
     };
 
-    let movement_id: Uuid = sqlx::query_scalar(
+    let (movement_id, created_at, created_by): (Uuid, DateTime<Utc>, Option<Uuid>) = sqlx::query_as(
         r#"
         INSERT INTO stock_movements (
             organization_id, batch_id, movement_type, quantity_delta, occurred_at, reason, idempotency_key, created_by
         )
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-        RETURNING id
+        RETURNING id, created_at, created_by
         "#,
     )
     .bind(auth.organization_id.0)
@@ -370,15 +478,29 @@ pub async fn record_stock_movement<S: AppBackendState>(
 
     if req.movement_type.affects_live_headcount() {
         sqlx::query(
-            "UPDATE population_balances SET quantity = $3, version = version + 1 WHERE organization_id = $1 AND batch_id = $2",
+            "UPDATE population_balances SET quantity = $3, version = version + 1, updated_by = $4 WHERE organization_id = $1 AND batch_id = $2",
         )
         .bind(auth.organization_id.0)
         .bind(batch_id)
         .bind(new_qty)
+        .bind(auth.user_id.0)
         .execute(&mut *tx)
         .await
         .map_err(|e| ApiError(map_sqlx_err(e)))?;
     }
+
+    AuditLogger::record(
+        &mut tx,
+        Some(auth.organization_id),
+        Some(auth.user_id),
+        "stock_movement.recorded",
+        "stock_movements",
+        Some(movement_id),
+        Some(serde_json::json!({ "population": current_qty })),
+        Some(serde_json::json!({ "population": new_qty, "delta": req.quantity_delta, "movement_type": req.movement_type.as_str() })),
+    )
+    .await
+    .map_err(ApiError)?;
 
     tx.commit().await.map_err(|e| ApiError(map_sqlx_err(e)))?;
     Ok((
@@ -387,6 +509,8 @@ pub async fn record_stock_movement<S: AppBackendState>(
             id: movement_id,
             batch_id,
             current_population: new_qty,
+            created_at,
+            created_by,
         }),
     ))
 }
@@ -406,7 +530,8 @@ pub async fn list_individual_tags<S: AppBackendState>(
     let mut tx = auth.context().begin_tx(state.pool()).await.map_err(ApiError)?;
     let rows: Vec<IndividualTagDto> = sqlx::query_as(
         r#"
-        SELECT id, batch_id, tag_code, tag_type, sex, birth_date, initial_weight_g, status, created_at
+        SELECT id, batch_id, tag_code, tag_type, sex, birth_date, initial_weight_g, status,
+               created_at, created_by, updated_at, updated_by
         FROM individual_tags
         WHERE organization_id = $1 AND batch_id = $2
         ORDER BY created_at DESC
@@ -440,10 +565,12 @@ pub async fn register_individual_tag<S: AppBackendState>(
     let row: IndividualTagDto = sqlx::query_as(
         r#"
         INSERT INTO individual_tags (
-            organization_id, batch_id, tag_code, tag_type, sex, birth_date, sire_tag_id, dam_tag_id, initial_weight_g, notes
+            organization_id, batch_id, tag_code, tag_type, sex, birth_date,
+            sire_tag_id, dam_tag_id, initial_weight_g, notes, created_by
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-        RETURNING id, batch_id, tag_code, tag_type, sex, birth_date, initial_weight_g, status, created_at
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        RETURNING id, batch_id, tag_code, tag_type, sex, birth_date, initial_weight_g, status,
+                  created_at, created_by, updated_at, updated_by
         "#,
     )
     .bind(auth.organization_id.0)
@@ -456,6 +583,7 @@ pub async fn register_individual_tag<S: AppBackendState>(
     .bind(req.dam_tag_id)
     .bind(req.initial_weight_g)
     .bind(&req.notes)
+    .bind(auth.user_id.0)
     .fetch_one(&mut *tx)
     .await
     .map_err(|e| ApiError(map_sqlx_err(e)))?;
@@ -498,14 +626,14 @@ pub async fn record_growth_sample<S: AppBackendState>(
     .await
     .map_err(|e| ApiError(map_sqlx_err(e)))?;
 
-    let sample_id: Uuid = sqlx::query_scalar(
+    let (sample_id, created_at, created_by): (Uuid, DateTime<Utc>, Option<Uuid>) = sqlx::query_as(
         r#"
         INSERT INTO growth_samples (
             organization_id, batch_id, sampled_at, sample_count, total_sample_weight_g,
             average_weight_g, average_length_cm, method, notes, created_by
         )
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-        RETURNING id
+        RETURNING id, created_at, created_by
         "#,
     )
     .bind(auth.organization_id.0)
@@ -570,6 +698,8 @@ pub async fn record_growth_sample<S: AppBackendState>(
             adg_g_per_day: adg,
             sgr_percent_per_day: sgr,
             estimated_biomass_kg,
+            created_at,
+            created_by,
         }),
     ))
 }
@@ -630,11 +760,12 @@ pub async fn record_output<S: AppBackendState>(
             .map_err(|e| ApiError(map_sqlx_err(e)))?;
 
             sqlx::query(
-                "UPDATE population_balances SET quantity = quantity - $3, version = version + 1 WHERE organization_id = $1 AND batch_id = $2",
+                "UPDATE population_balances SET quantity = quantity - $3, version = version + 1, updated_by = $4 WHERE organization_id = $1 AND batch_id = $2",
             )
             .bind(auth.organization_id.0)
             .bind(batch_id)
             .bind(removed)
+            .bind(auth.user_id.0)
             .execute(&mut *tx)
             .await
             .map_err(|e| ApiError(map_sqlx_err(e)))?;
@@ -653,14 +784,14 @@ pub async fn record_output<S: AppBackendState>(
         OutputType::Other => "other",
     };
 
-    let out_id: Uuid = sqlx::query_scalar(
+    let (out_id, created_at, created_by): (Uuid, DateTime<Utc>, Option<Uuid>) = sqlx::query_as(
         r#"
         INSERT INTO production_outputs (
             organization_id, batch_id, stock_movement_id, occurred_at, output_type,
             quantity, unit, average_weight_g, grade, notes, created_by
         )
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-        RETURNING id
+        RETURNING id, created_at, created_by
         "#,
     )
     .bind(auth.organization_id.0)
@@ -678,6 +809,19 @@ pub async fn record_output<S: AppBackendState>(
     .await
     .map_err(|e| ApiError(map_sqlx_err(e)))?;
 
+    AuditLogger::record(
+        &mut tx,
+        Some(auth.organization_id),
+        Some(auth.user_id),
+        "output.recorded",
+        "production_outputs",
+        Some(out_id),
+        None,
+        Some(serde_json::json!({ "batch_id": batch_id, "output_type": output_type_str, "quantity": req.quantity, "unit": req.unit })),
+    )
+    .await
+    .map_err(ApiError)?;
+
     tx.commit().await.map_err(|e| ApiError(map_sqlx_err(e)))?;
     Ok((
         axum::http::StatusCode::CREATED,
@@ -687,6 +831,8 @@ pub async fn record_output<S: AppBackendState>(
             output_type: req.output_type,
             quantity: req.quantity,
             unit: req.unit,
+            created_at,
+            created_by,
         }),
     ))
 }
@@ -697,6 +843,7 @@ pub fn router<S: AppBackendState>() -> Router<S> {
             "/api/v1/batches",
             get(list_batches::<S>).post(create_batch::<S>),
         )
+        .route("/api/v1/batches/{id}", patch(update_batch::<S>))
         .route(
             "/api/v1/batches/{id}/stock-movements",
             post(record_stock_movement::<S>),
@@ -714,9 +861,9 @@ pub fn router<S: AppBackendState>() -> Router<S> {
 
 #[derive(OpenApi)]
 #[openapi(
-    paths(list_batches, create_batch, record_stock_movement, list_individual_tags, register_individual_tag, record_growth_sample, record_output),
+    paths(list_batches, create_batch, update_batch, record_stock_movement, list_individual_tags, register_individual_tag, record_growth_sample, record_output),
     components(schemas(
-        CreateBatchRequest, BatchDto, StockMovementRequest, StockMovementResponse,
+        CreateBatchRequest, UpdateBatchRequest, BatchDto, StockMovementRequest, StockMovementResponse,
         RegisterTagRequest, IndividualTagDto, CreateGrowthSampleRequest, GrowthSampleResponse,
         CreateOutputRequest, OutputResponse
     ))

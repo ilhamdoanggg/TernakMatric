@@ -1,51 +1,67 @@
-# TernakMatric Database Design — v2.0 generic livestock draft
+# TernakMatric — Referensi Database (Baseline)
 
-## Files
-- `001_ternakmatric_schema.sql`: PostgreSQL baseline schema, constraints, indexes, triggers, and starter RLS policies.
-- `002_ternakmatric_seed.sql`: Global reference data, species catalog, and formula metadata.
-- `DATA_DICTIONARY.md`: Table inventory and domain notes.
-- `ERD.md`: Relationship overview and design decisions.
+**Status**: baseline desain untuk review · **Versi**: v2.0 · **Diselaraskan**: 2026-11-26
 
-## Apply
-1. Provision PostgreSQL 16+.
-2. Review the schema with your database/security engineer.
-3. Apply `001_ternakmatric_schema.sql` using a migration role.
-4. Apply `002_ternakmatric_seed.sql`.
-5. Create a non-owner application role. Do not run the application as a superuser or table owner.
-6. Grant only required table/sequence/function permissions.
-7. Set `app.current_organization_id` using `SET LOCAL` inside every tenant-scoped transaction.
+Direktori ini adalah **sumber kebenaran untuk nama tabel, kolom, dan domain** pada tahap desain. Schema yang **benar-benar dipasang** berada di [`../backend/migrations/`](../backend/migrations/). Untuk status pemasangan dan selisihnya, baca [`../notes/note-4-migration-audit.md`](../notes/note-4-migration-audit.md) dan [`../docs/06-DATABASE-ERD.md`](../docs/06-DATABASE-ERD.md).
 
-Example transaction:
+> **Baseline vs ekstensi**: `001_ternakmatric_schema.sql` dan `002_ternakmatric_seed.sql` tidak mencakup seluruh tabel/kolom di migrasi. Tambahan seperti `individual_tags`, `vaccination_schedules`, `biosecurity_logs`, `environment_readings.source`, `health_records.withdrawal_days`, tipe kalkulasi `sgr`/`hpp`, dan kolom audit `created_by`/`updated_at`/`updated_by` adalah **ekstensi yang diterapkan lewat migrasi**, bukan koreksi terhadap baseline ini.
+
+## Isi direktori
+
+| File | Peran |
+| --- | --- |
+| `001_ternakmatric_schema.sql` | Baseline schema PostgreSQL 16: tabel, constraint, index, trigger, dan policy RLS awal |
+| `002_ternakmatric_seed.sql` | Data referensi global: katalog species, unit types, production systems, metrik lingkungan, paket, dan versi formula |
+| `DATA_DICTIONARY.md` | Inventaris tabel, cakupan (global/tenant), dan tujuan domain |
+| `ERD.md` | Gambaran relasi dan keputusan domain |
+
+## Cara pakai (referensi review)
+
+1. Tinjau schema bersama database/security engineer.
+2. Terapkan `001_ternakmatric_schema.sql` dengan role migrator, lalu `002_ternakmatric_seed.sql`.
+3. Buat role aplikasi terpisah, bukan superuser/owner, dan tanpa `BYPASSRLS`. Lihat [`../deploy/db/init-app-role.sql`](../deploy/db/init-app-role.sql).
+4. Berikan hanya grant yang diperlukan.
+5. Set `app.current_organization_id` memakai `SET LOCAL` di setiap transaksi tenant.
+
 ```sql
 BEGIN;
 SET LOCAL app.current_organization_id = '00000000-0000-0000-0000-000000000001';
--- tenant-scoped queries here
+-- query tenant di sini
 COMMIT;
 ```
 
-## Important implementation notes
-- This is a reviewable baseline, not a production-certified migration.
-- The model covers fish, crustaceans, mollusks, poultry, pigs, goats/sheep, cattle/buffalo, rabbits, reptiles, insects, and tenant-defined species. Do not add species-specific columns to generic tables.
-- RLS is defense in depth. Backend authorization and tenant membership checks remain mandatory.
-- PostgreSQL owners, superusers, and roles with BYPASSRLS can bypass policies. Use a dedicated least-privilege runtime role.
-- `species`, `unit_types`, `production_systems`, `environment_metrics`, `roles`, `expense_categories`, and `calculation_versions` have global rows (`organization_id IS NULL`). Application write permissions must be restricted accordingly.
-- Multiple active batches per production unit are supported. Capacity validation requires an application/domain transaction that locks the unit row and calculates combined occupancy/biomass using the unit's `capacity_value` and `capacity_unit`.
-- `species_production_profiles.parameters` is versioned species/strain/system-specific data. Universal husbandry values must not be hardcoded or seeded as defaults.
-- Stock and inventory ledgers should be append-only after posting. Corrections should be compensating transactions, not destructive edits.
-- Offline sync requires client-generated UUIDs, idempotency keys, base versions, conflict resolution, and server-side validation. Do not blindly apply stale updates.
-- Inventory quantity must be normalized to a canonical unit per product (recommended kg for feed). Transfers require paired issue/receipt ledger effects in one transaction.
-- A production batch has one current unit assignment at a time. Transfers close the old assignment and open a new one in a single transaction.
-- `production_outputs` is the generic output ledger: meat, eggs, milk, fry, cull, offspring, or other outputs. It must be written in the same transaction as its `stock_movements` event.
-- `environment_readings.metric_id` points to a global metric catalog; `metric_value` and `unit` are explicit so the same table can store water, air, soil, housing, and feed measurements.
-- Review composite tenant foreign keys, RLS policies, uniqueness rules, and global reference-table grants before production.
-- Add automated migration tests, tenant-isolation tests, ledger reconciliation tests, cross-species calculation tests, and offline replay tests.
+Untuk menjalankan schema yang dipakai aplikasi, gunakan:
 
-## Known items for the next migration iteration
-1. Add explicit roles, grants, revokes, and membership-based policies for `users` and `organizations`.
-2. Add posting workflow and immutable-ledger triggers for posted inventory headers and production outputs.
-3. Add transaction-safe population/inventory balance projection maintenance routines with row locking.
-4. Add unit transfer transaction and capacity reservation model.
-5. Add attachment storage metadata and access policy.
-6. Add plan/subscription lifecycle and usage metering.
-7. Add richer accounting model if formal accounting is required.
-8. Add tenant-facing UI for managing custom species and custom production profiles.
+```powershell
+docker compose up -d postgres
+docker compose run --rm db-migrate
+```
+
+## Prinsip yang tidak berubah
+
+- Model mencakup ikan, crustacean, mollusk, unggas, babi, kambing/domba, sapi/kerbau, kelinci, reptil, serangga, dan species custom tenant. Jangan menambah kolom spesifik species ke tabel generik.
+- `users` dan `organizations` adalah entitas global; keduanya **sengaja tidak memakai RLS tenant** sampai ada policy berbasis membership/GRANT.
+- RLS adalah pertahanan berlapis: pengecekan otorisasi dan membership di backend tetap wajib.
+- Owner tabel, superuser, dan role ber-`BYPASSRLS` dapat melewati policy. Jangan pakai salah satunya sebagai role runtime.
+- `species`, `unit_types`, `production_systems`, `environment_metrics`, `roles`, `expense_categories`, dan `calculation_versions` memiliki baris global (`organization_id IS NULL`). Hak tulis aplikasi harus dibatasi.
+- `species_production_profiles.parameters` adalah data berversi per species/strain/sistem. Nilai husbandry universal **tidak boleh** di-hardcode atau di-seed sebagai default.
+- Ledger stok dan inventory bersifat append-only setelah posting. Koreksi memakai transaksi kompensasi, bukan `UPDATE`/`DELETE`.
+- Sinkronisasi offline memerlukan UUID buatan klien, idempotency key, base version, resolusi konflik, dan validasi server. Jangan menerapkan update usang secara membabi buta.
+- Kuantitas inventory dinormalisasi ke satuan kanonik per produk (disarankan kg untuk pakan). Transfer memerlukan pasangan efek ledger keluar/masuk dalam satu transaksi.
+- Satu batch hanya memiliki satu assignment aktif. Transfer menutup assignment lama dan membuka yang baru dalam satu transaksi.
+- `production_outputs` adalah ledger output generik (daging, telur, susu, fry, cull, offspring, atau lainnya) dan ditulis dalam transaksi yang sama dengan `stock_movements` terkait.
+- `environment_readings.metric_id` merujuk katalog metrik global; `metric_value` dan `unit` disimpan eksplisit agar satu tabel dapat menampung air, udara, tanah, kandang, dan pakan.
+
+## Item yang masih terbuka
+
+Status terkini dari item berikut dicatat di [`../notes/note-4-migration-audit.md`](../notes/note-4-migration-audit.md):
+
+1. Policy/grant berbasis membership untuk `users` dan `organizations`.
+2. Workflow posting dan trigger immutable untuk header inventory serta output produksi.
+3. Routine pemeliharaan projection `population_balances`/`inventory_balances` dengan row lock yang terverifikasi.
+4. Transaksi transfer unit dan model reservasi kapasitas.
+5. Metadata storage lampiran dan policy aksesnya.
+6. Siklus hidup paket/langganan dan usage metering.
+7. Model akuntansi yang lebih lengkap bila dibutuhkan.
+8. UI tenant untuk species custom dan profil produksi custom.
+9. Seed `role_permissions` dan urutan seed global terhadap RLS hardening.

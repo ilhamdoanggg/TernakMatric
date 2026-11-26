@@ -1,9 +1,9 @@
 use axum::extract::{Path, State};
-use axum::routing::{get, post};
+use axum::routing::{get, patch, post};
 use axum::{Json, Router};
 use chrono::{DateTime, NaiveDate, Utc};
 use infra_auth::{ApiError, AppBackendState, AuthPrincipal, Permission};
-use infra_db::map_sqlx_err;
+use infra_db::{map_sqlx_err, AuditLogger};
 use serde::{Deserialize, Serialize};
 use shared_kernel::AppError;
 use utoipa::{OpenApi, ToSchema};
@@ -19,6 +19,13 @@ pub struct CreateVaccinationScheduleRequest {
     pub notes: Option<String>,
 }
 
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct UpdateVaccinationStatusRequest {
+    pub status: String,
+    pub completed_at: Option<DateTime<Utc>>,
+    pub notes: Option<String>,
+}
+
 #[derive(Debug, Serialize, Deserialize, ToSchema, sqlx::FromRow)]
 pub struct VaccinationScheduleDto {
     pub id: Uuid,
@@ -30,6 +37,10 @@ pub struct VaccinationScheduleDto {
     pub dosage: Option<String>,
     pub status: String,
     pub completed_at: Option<DateTime<Utc>>,
+    pub created_at: DateTime<Utc>,
+    pub created_by: Option<Uuid>,
+    pub updated_at: DateTime<Utc>,
+    pub updated_by: Option<Uuid>,
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
@@ -52,6 +63,10 @@ pub struct HealthRecordDto {
     pub treatment_product: Option<String>,
     pub dosage: Option<String>,
     pub withdrawal_days: Option<i32>,
+    pub created_at: DateTime<Utc>,
+    pub created_by: Option<Uuid>,
+    pub updated_at: DateTime<Utc>,
+    pub updated_by: Option<Uuid>,
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
@@ -68,6 +83,8 @@ pub struct MortalityResponse {
     pub id: Uuid,
     pub stock_movement_id: Uuid,
     pub remaining_population: i32,
+    pub created_at: DateTime<Utc>,
+    pub created_by: Option<Uuid>,
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
@@ -90,6 +107,10 @@ pub struct BiosecurityLogDto {
     pub activity_type: String,
     pub performed_at: DateTime<Utc>,
     pub passed: bool,
+    pub created_at: DateTime<Utc>,
+    pub created_by: Option<Uuid>,
+    pub updated_at: DateTime<Utc>,
+    pub updated_by: Option<Uuid>,
 }
 
 #[utoipa::path(
@@ -107,7 +128,8 @@ pub async fn list_vaccinations<S: AppBackendState>(
     let mut tx = auth.context().begin_tx(state.pool()).await.map_err(ApiError)?;
     let rows: Vec<VaccinationScheduleDto> = sqlx::query_as(
         r#"
-        SELECT id, batch_id, vaccine_name, target_disease, route, scheduled_date, dosage, status, completed_at
+        SELECT id, batch_id, vaccine_name, target_disease, route, scheduled_date, dosage,
+               status, completed_at, created_at, created_by, updated_at, updated_by
         FROM vaccination_schedules
         WHERE organization_id = $1 AND batch_id = $2
         ORDER BY scheduled_date ASC
@@ -144,7 +166,8 @@ pub async fn schedule_vaccination<S: AppBackendState>(
             organization_id, batch_id, vaccine_name, target_disease, route, scheduled_date, dosage, notes, created_by
         )
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-        RETURNING id, batch_id, vaccine_name, target_disease, route, scheduled_date, dosage, status, completed_at
+        RETURNING id, batch_id, vaccine_name, target_disease, route, scheduled_date, dosage,
+                  status, completed_at, created_at, created_by, updated_at, updated_by
         "#,
     )
     .bind(auth.organization_id.0)
@@ -159,8 +182,92 @@ pub async fn schedule_vaccination<S: AppBackendState>(
     .fetch_one(&mut *tx)
     .await
     .map_err(|e| ApiError(map_sqlx_err(e)))?;
+
+    AuditLogger::record(
+        &mut tx,
+        Some(auth.organization_id),
+        Some(auth.user_id),
+        "vaccination.scheduled",
+        "vaccination_schedules",
+        Some(row.id),
+        None,
+        Some(serde_json::to_value(&row).unwrap_or_default()),
+    )
+    .await
+    .map_err(ApiError)?;
+
     tx.commit().await.map_err(|e| ApiError(map_sqlx_err(e)))?;
     Ok((axum::http::StatusCode::CREATED, Json(row)))
+}
+
+#[utoipa::path(
+    patch,
+    path = "/api/v1/vaccinations/{id}",
+    params(("id" = Uuid, Path, description = "Vaccination Schedule ID")),
+    request_body = UpdateVaccinationStatusRequest,
+    responses((status = 200, body = VaccinationScheduleDto)),
+    tag = "Health & Biosecurity"
+)]
+pub async fn update_vaccination_status<S: AppBackendState>(
+    State(state): State<S>,
+    auth: AuthPrincipal,
+    Path(id): Path<Uuid>,
+    Json(req): Json<UpdateVaccinationStatusRequest>,
+) -> Result<Json<VaccinationScheduleDto>, ApiError> {
+    auth.require(Permission::HealthWrite).map_err(ApiError)?;
+    let mut tx = auth.context().begin_tx(state.pool()).await.map_err(ApiError)?;
+
+    let before: VaccinationScheduleDto = sqlx::query_as(
+        r#"
+        SELECT id, batch_id, vaccine_name, target_disease, route, scheduled_date, dosage,
+               status, completed_at, created_at, created_by, updated_at, updated_by
+        FROM vaccination_schedules WHERE organization_id = $1 AND id = $2 FOR UPDATE
+        "#,
+    )
+    .bind(auth.organization_id.0)
+    .bind(id)
+    .fetch_one(&mut *tx)
+    .await
+    .map_err(|e| ApiError(map_sqlx_err(e)))?;
+
+    let after: VaccinationScheduleDto = sqlx::query_as(
+        r#"
+        UPDATE vaccination_schedules
+        SET status = $3,
+            completed_at = COALESCE($4, completed_at),
+            notes = COALESCE($5, notes),
+            version = version + 1,
+            updated_by = $6
+        WHERE organization_id = $1 AND id = $2
+        RETURNING id, batch_id, vaccine_name, target_disease, route, scheduled_date, dosage,
+                  status, completed_at, created_at, created_by, updated_at, updated_by
+        "#,
+    )
+    .bind(auth.organization_id.0)
+    .bind(id)
+    .bind(&req.status)
+    .bind(req.completed_at)
+    .bind(&req.notes)
+    .bind(auth.user_id.0)
+    .fetch_one(&mut *tx)
+    .await
+    .map_err(|e| ApiError(map_sqlx_err(e)))?;
+
+    AuditLogger::record(
+        &mut tx,
+        Some(auth.organization_id),
+        Some(auth.user_id),
+        "vaccination.updated",
+        "vaccination_schedules",
+        Some(id),
+        Some(serde_json::to_value(&before).unwrap_or_default()),
+        Some(serde_json::to_value(&after).unwrap_or_default()),
+    )
+    .await
+    .map_err(ApiError)?;
+
+    tx.commit().await.map_err(|e| ApiError(map_sqlx_err(e)))?;
+    Ok(Json(after))
 }
 
 #[utoipa::path(
@@ -185,7 +292,8 @@ pub async fn record_health_event<S: AppBackendState>(
             organization_id, batch_id, observed_at, category, description, treatment_product, dosage, withdrawal_days, created_by
         )
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-        RETURNING id, batch_id, observed_at, category, description, treatment_product, dosage, withdrawal_days
+        RETURNING id, batch_id, observed_at, category, description, treatment_product, dosage, withdrawal_days,
+                  created_at, created_by, updated_at, updated_by
         "#,
     )
     .bind(auth.organization_id.0)
@@ -200,6 +308,20 @@ pub async fn record_health_event<S: AppBackendState>(
     .fetch_one(&mut *tx)
     .await
     .map_err(|e| ApiError(map_sqlx_err(e)))?;
+
+    AuditLogger::record(
+        &mut tx,
+        Some(auth.organization_id),
+        Some(auth.user_id),
+        "health_record.created",
+        "health_records",
+        Some(row.id),
+        None,
+        Some(serde_json::to_value(&row).unwrap_or_default()),
+    )
+    .await
+    .map_err(ApiError)?;
+
     tx.commit().await.map_err(|e| ApiError(map_sqlx_err(e)))?;
     Ok((axum::http::StatusCode::CREATED, Json(row)))
 }
@@ -264,22 +386,23 @@ pub async fn record_mortality<S: AppBackendState>(
     .map_err(|e| ApiError(map_sqlx_err(e)))?;
 
     sqlx::query(
-        "UPDATE population_balances SET quantity = $3, version = version + 1 WHERE organization_id = $1 AND batch_id = $2",
+        "UPDATE population_balances SET quantity = $3, version = version + 1, updated_by = $4 WHERE organization_id = $1 AND batch_id = $2",
     )
     .bind(auth.organization_id.0)
     .bind(batch_id)
     .bind(remaining)
+    .bind(auth.user_id.0)
     .execute(&mut *tx)
     .await
     .map_err(|e| ApiError(map_sqlx_err(e)))?;
 
-    let mortality_id: Uuid = sqlx::query_scalar(
+    let (mortality_id, created_at, created_by): (Uuid, DateTime<Utc>, Option<Uuid>) = sqlx::query_as(
         r#"
         INSERT INTO mortality_records (
             organization_id, batch_id, stock_movement_id, quantity, occurred_at, suspected_cause, notes, created_by
         )
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-        RETURNING id
+        RETURNING id, created_at, created_by
         "#,
     )
     .bind(auth.organization_id.0)
@@ -294,6 +417,19 @@ pub async fn record_mortality<S: AppBackendState>(
     .await
     .map_err(|e| ApiError(map_sqlx_err(e)))?;
 
+    AuditLogger::record(
+        &mut tx,
+        Some(auth.organization_id),
+        Some(auth.user_id),
+        "mortality.recorded",
+        "mortality_records",
+        Some(mortality_id),
+        Some(serde_json::json!({ "population": current_pop })),
+        Some(serde_json::json!({ "population": remaining, "mortality": req.quantity })),
+    )
+    .await
+    .map_err(ApiError)?;
+
     tx.commit().await.map_err(|e| ApiError(map_sqlx_err(e)))?;
     Ok((
         axum::http::StatusCode::CREATED,
@@ -301,6 +437,8 @@ pub async fn record_mortality<S: AppBackendState>(
             id: mortality_id,
             stock_movement_id: movement_id,
             remaining_population: remaining,
+            created_at,
+            created_by,
         }),
     ))
 }
@@ -328,7 +466,8 @@ pub async fn record_biosecurity_log<S: AppBackendState>(
             agent_used, concentration, actor_name, passed, notes, created_by
         )
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-        RETURNING id, farm_id, unit_id, activity_type, performed_at, passed
+        RETURNING id, farm_id, unit_id, activity_type, performed_at, passed,
+                  created_at, created_by, updated_at, updated_by
         "#,
     )
     .bind(auth.organization_id.0)
@@ -345,6 +484,20 @@ pub async fn record_biosecurity_log<S: AppBackendState>(
     .fetch_one(&mut *tx)
     .await
     .map_err(|e| ApiError(map_sqlx_err(e)))?;
+
+    AuditLogger::record(
+        &mut tx,
+        Some(auth.organization_id),
+        Some(auth.user_id),
+        "biosecurity.logged",
+        "biosecurity_logs",
+        Some(row.id),
+        None,
+        Some(serde_json::to_value(&row).unwrap_or_default()),
+    )
+    .await
+    .map_err(ApiError)?;
+
     tx.commit().await.map_err(|e| ApiError(map_sqlx_err(e)))?;
     Ok((axum::http::StatusCode::CREATED, Json(row)))
 }
@@ -354,6 +507,10 @@ pub fn router<S: AppBackendState>() -> Router<S> {
         .route(
             "/api/v1/batches/{id}/vaccinations",
             get(list_vaccinations::<S>).post(schedule_vaccination::<S>),
+        )
+        .route(
+            "/api/v1/vaccinations/{id}",
+            patch(update_vaccination_status::<S>),
         )
         .route(
             "/api/v1/batches/{id}/health-records",
@@ -371,9 +528,9 @@ pub fn router<S: AppBackendState>() -> Router<S> {
 
 #[derive(OpenApi)]
 #[openapi(
-    paths(list_vaccinations, schedule_vaccination, record_health_event, record_mortality, record_biosecurity_log),
+    paths(list_vaccinations, schedule_vaccination, update_vaccination_status, record_health_event, record_mortality, record_biosecurity_log),
     components(schemas(
-        CreateVaccinationScheduleRequest, VaccinationScheduleDto,
+        CreateVaccinationScheduleRequest, UpdateVaccinationStatusRequest, VaccinationScheduleDto,
         CreateHealthRecordRequest, HealthRecordDto,
         RecordMortalityRequest, MortalityResponse,
         CreateBiosecurityLogRequest, BiosecurityLogDto

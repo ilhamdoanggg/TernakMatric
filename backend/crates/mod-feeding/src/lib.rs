@@ -3,7 +3,7 @@ use axum::routing::{get, post};
 use axum::{Json, Router};
 use chrono::{DateTime, NaiveDate, Utc};
 use infra_auth::{ApiError, AppBackendState, AuthPrincipal, Permission};
-use infra_db::map_sqlx_err;
+use infra_db::{map_sqlx_err, AuditLogger};
 use mod_calculation::{compute_fcr, CalculationResult, FcrInput, FcrMode, FcrSummary};
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
@@ -26,6 +26,9 @@ pub struct WarehouseDto {
     pub code: String,
     pub name: String,
     pub created_at: DateTime<Utc>,
+    pub created_by: Option<Uuid>,
+    pub updated_at: DateTime<Utc>,
+    pub updated_by: Option<Uuid>,
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
@@ -50,6 +53,9 @@ pub struct FeedProductDto {
     pub default_unit: String,
     pub is_active: bool,
     pub created_at: DateTime<Utc>,
+    pub created_by: Option<Uuid>,
+    pub updated_at: DateTime<Utc>,
+    pub updated_by: Option<Uuid>,
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
@@ -79,6 +85,8 @@ pub struct InventoryTxResponse {
     pub id: Uuid,
     pub transaction_type: String,
     pub lines_count: usize,
+    pub created_at: DateTime<Utc>,
+    pub created_by: Option<Uuid>,
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
@@ -102,6 +110,8 @@ pub struct FeedingRecordResponse {
     pub id: Uuid,
     pub batch_id: Uuid,
     pub quantity_kg: Decimal,
+    pub created_at: DateTime<Utc>,
+    pub created_by: Option<Uuid>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -121,7 +131,12 @@ pub async fn list_warehouses<S: AppBackendState>(
 ) -> Result<Json<Vec<WarehouseDto>>, ApiError> {
     let mut tx = auth.context().begin_tx(state.pool()).await.map_err(ApiError)?;
     let rows: Vec<WarehouseDto> = sqlx::query_as(
-        "SELECT id, organization_id, farm_id, code, name, created_at FROM warehouses WHERE organization_id = $1 ORDER BY created_at DESC",
+        r#"
+        SELECT id, organization_id, farm_id, code, name, created_at, created_by, updated_at, updated_by
+        FROM warehouses
+        WHERE organization_id = $1
+        ORDER BY created_at DESC
+        "#,
     )
     .bind(auth.organization_id.0)
     .fetch_all(&mut *tx)
@@ -147,18 +162,33 @@ pub async fn create_warehouse<S: AppBackendState>(
     let mut tx = auth.context().begin_tx(state.pool()).await.map_err(ApiError)?;
     let row: WarehouseDto = sqlx::query_as(
         r#"
-        INSERT INTO warehouses (organization_id, farm_id, code, name)
-        VALUES ($1, $2, $3, $4)
-        RETURNING id, organization_id, farm_id, code, name, created_at
+        INSERT INTO warehouses (organization_id, farm_id, code, name, created_by)
+        VALUES ($1, $2, $3, $4, $5)
+        RETURNING id, organization_id, farm_id, code, name, created_at, created_by, updated_at, updated_by
         "#,
     )
     .bind(auth.organization_id.0)
     .bind(req.farm_id)
     .bind(req.code.trim())
     .bind(req.name.trim())
+    .bind(auth.user_id.0)
     .fetch_one(&mut *tx)
     .await
     .map_err(|e| ApiError(map_sqlx_err(e)))?;
+
+    AuditLogger::record(
+        &mut tx,
+        Some(auth.organization_id),
+        Some(auth.user_id),
+        "warehouse.created",
+        "warehouses",
+        Some(row.id),
+        None,
+        Some(serde_json::to_value(&row).unwrap_or_default()),
+    )
+    .await
+    .map_err(ApiError)?;
+
     tx.commit().await.map_err(|e| ApiError(map_sqlx_err(e)))?;
     Ok((axum::http::StatusCode::CREATED, Json(row)))
 }
@@ -176,7 +206,8 @@ pub async fn list_feed_products<S: AppBackendState>(
     let mut tx = auth.context().begin_tx(state.pool()).await.map_err(ApiError)?;
     let rows: Vec<FeedProductDto> = sqlx::query_as(
         r#"
-        SELECT id, organization_id, sku, name, brand, pellet_size_mm, protein_percent, default_unit, is_active, created_at
+        SELECT id, organization_id, sku, name, brand, pellet_size_mm, protein_percent,
+               default_unit, is_active, created_at, created_by, updated_at, updated_by
         FROM feed_products
         WHERE organization_id = $1 AND is_active = true
         ORDER BY name ASC
@@ -206,9 +237,10 @@ pub async fn create_feed_product<S: AppBackendState>(
     let mut tx = auth.context().begin_tx(state.pool()).await.map_err(ApiError)?;
     let row: FeedProductDto = sqlx::query_as(
         r#"
-        INSERT INTO feed_products (organization_id, sku, name, brand, pellet_size_mm, protein_percent, default_unit)
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
-        RETURNING id, organization_id, sku, name, brand, pellet_size_mm, protein_percent, default_unit, is_active, created_at
+        INSERT INTO feed_products (organization_id, sku, name, brand, pellet_size_mm, protein_percent, default_unit, created_by)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        RETURNING id, organization_id, sku, name, brand, pellet_size_mm, protein_percent,
+                  default_unit, is_active, created_at, created_by, updated_at, updated_by
         "#,
     )
     .bind(auth.organization_id.0)
@@ -218,9 +250,24 @@ pub async fn create_feed_product<S: AppBackendState>(
     .bind(req.pellet_size_mm)
     .bind(req.protein_percent)
     .bind(req.default_unit.as_deref().unwrap_or("kg"))
+    .bind(auth.user_id.0)
     .fetch_one(&mut *tx)
     .await
     .map_err(|e| ApiError(map_sqlx_err(e)))?;
+
+    AuditLogger::record(
+        &mut tx,
+        Some(auth.organization_id),
+        Some(auth.user_id),
+        "feed_product.created",
+        "feed_products",
+        Some(row.id),
+        None,
+        Some(serde_json::to_value(&row).unwrap_or_default()),
+    )
+    .await
+    .map_err(ApiError)?;
+
     tx.commit().await.map_err(|e| ApiError(map_sqlx_err(e)))?;
     Ok((axum::http::StatusCode::CREATED, Json(row)))
 }
@@ -245,14 +292,14 @@ pub async fn create_inventory_transaction<S: AppBackendState>(
     }
 
     let mut tx = auth.context().begin_tx(state.pool()).await.map_err(ApiError)?;
-    let tx_id: Uuid = sqlx::query_scalar(
+    let (tx_id, created_at, created_by): (Uuid, DateTime<Utc>, Option<Uuid>) = sqlx::query_as(
         r#"
         INSERT INTO inventory_transactions (
             organization_id, warehouse_id, transaction_type, status, occurred_at,
             reference_code, notes, idempotency_key, created_by
         )
         VALUES ($1, $2, $3, 'posted', $4, $5, $6, $7, $8)
-        RETURNING id
+        RETURNING id, created_at, created_by
         "#,
     )
     .bind(auth.organization_id.0)
@@ -320,9 +367,9 @@ pub async fn create_inventory_transaction<S: AppBackendState>(
         sqlx::query(
             r#"
             INSERT INTO inventory_transaction_lines (
-                organization_id, transaction_id, feed_product_id, quantity, unit, unit_cost, lot_code, expiry_date, batch_id
+                organization_id, transaction_id, feed_product_id, quantity, unit, unit_cost, lot_code, expiry_date, batch_id, created_by
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
             "#,
         )
         .bind(auth.organization_id.0)
@@ -334,16 +381,17 @@ pub async fn create_inventory_transaction<S: AppBackendState>(
         .bind(lot)
         .bind(line.expiry_date)
         .bind(line.batch_id)
+        .bind(auth.user_id.0)
         .execute(&mut *tx)
         .await
         .map_err(|e| ApiError(map_sqlx_err(e)))?;
 
         sqlx::query(
             r#"
-            INSERT INTO inventory_balances (organization_id, warehouse_id, feed_product_id, lot_code, quantity)
-            VALUES ($1, $2, $3, $4, $5)
+            INSERT INTO inventory_balances (organization_id, warehouse_id, feed_product_id, lot_code, quantity, updated_by)
+            VALUES ($1, $2, $3, $4, $5, $6)
             ON CONFLICT (organization_id, warehouse_id, feed_product_id, lot_code)
-            DO UPDATE SET quantity = EXCLUDED.quantity, version = inventory_balances.version + 1
+            DO UPDATE SET quantity = EXCLUDED.quantity, version = inventory_balances.version + 1, updated_by = EXCLUDED.updated_by
             "#,
         )
         .bind(auth.organization_id.0)
@@ -351,10 +399,24 @@ pub async fn create_inventory_transaction<S: AppBackendState>(
         .bind(line.feed_product_id)
         .bind(lot)
         .bind(next_bal)
+        .bind(auth.user_id.0)
         .execute(&mut *tx)
         .await
         .map_err(|e| ApiError(map_sqlx_err(e)))?;
     }
+
+    AuditLogger::record(
+        &mut tx,
+        Some(auth.organization_id),
+        Some(auth.user_id),
+        "inventory_transaction.posted",
+        "inventory_transactions",
+        Some(tx_id),
+        None,
+        Some(serde_json::json!({ "warehouse_id": req.warehouse_id, "transaction_type": req.transaction_type, "lines_count": req.lines.len() })),
+    )
+    .await
+    .map_err(ApiError)?;
 
     tx.commit().await.map_err(|e| ApiError(map_sqlx_err(e)))?;
     Ok((
@@ -363,6 +425,8 @@ pub async fn create_inventory_transaction<S: AppBackendState>(
             id: tx_id,
             transaction_type: req.transaction_type,
             lines_count: req.lines.len(),
+            created_at,
+            created_by,
         }),
     ))
 }
@@ -444,9 +508,9 @@ pub async fn record_feeding<S: AppBackendState>(
         let line_id: Uuid = sqlx::query_scalar(
             r#"
             INSERT INTO inventory_transaction_lines (
-                organization_id, transaction_id, feed_product_id, quantity, unit, unit_cost, lot_code, batch_id
+                organization_id, transaction_id, feed_product_id, quantity, unit, unit_cost, lot_code, batch_id, created_by
             )
-            VALUES ($1, $2, $3, $4, 'kg', $5, $6, $7)
+            VALUES ($1, $2, $3, $4, 'kg', $5, $6, $7, $8)
             RETURNING id
             "#,
         )
@@ -457,6 +521,7 @@ pub async fn record_feeding<S: AppBackendState>(
         .bind(req.unit_cost)
         .bind(lot)
         .bind(req.batch_id)
+        .bind(auth.user_id.0)
         .fetch_one(&mut *tx)
         .await
         .map_err(|e| ApiError(map_sqlx_err(e)))?;
@@ -464,7 +529,7 @@ pub async fn record_feeding<S: AppBackendState>(
         sqlx::query(
             r#"
             UPDATE inventory_balances
-            SET quantity = quantity - $5, version = version + 1
+            SET quantity = quantity - $5, version = version + 1, updated_by = $6
             WHERE organization_id = $1 AND warehouse_id = $2 AND feed_product_id = $3 AND lot_code = $4
             "#,
         )
@@ -473,6 +538,7 @@ pub async fn record_feeding<S: AppBackendState>(
         .bind(req.feed_product_id)
         .bind(lot)
         .bind(qty_kg)
+        .bind(auth.user_id.0)
         .execute(&mut *tx)
         .await
         .map_err(|e| ApiError(map_sqlx_err(e)))?;
@@ -480,14 +546,14 @@ pub async fn record_feeding<S: AppBackendState>(
         inv_line_id = Some(line_id);
     }
 
-    let feeding_id: Uuid = sqlx::query_scalar(
+    let (feeding_id, created_at, created_by): (Uuid, DateTime<Utc>, Option<Uuid>) = sqlx::query_as(
         r#"
         INSERT INTO feeding_records (
             organization_id, batch_id, unit_id, warehouse_id, feed_product_id, inventory_line_id,
             fed_at, quantity, unit, unit_cost, feeding_method, notes, idempotency_key, created_by
         )
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
-        RETURNING id
+        RETURNING id, created_at, created_by
         "#,
     )
     .bind(auth.organization_id.0)
@@ -508,6 +574,19 @@ pub async fn record_feeding<S: AppBackendState>(
     .await
     .map_err(|e| ApiError(map_sqlx_err(e)))?;
 
+    AuditLogger::record(
+        &mut tx,
+        Some(auth.organization_id),
+        Some(auth.user_id),
+        "feeding.recorded",
+        "feeding_records",
+        Some(feeding_id),
+        None,
+        Some(serde_json::json!({ "batch_id": req.batch_id, "quantity_kg": qty_kg })),
+    )
+    .await
+    .map_err(ApiError)?;
+
     tx.commit().await.map_err(|e| ApiError(map_sqlx_err(e)))?;
     Ok((
         axum::http::StatusCode::CREATED,
@@ -515,6 +594,8 @@ pub async fn record_feeding<S: AppBackendState>(
             id: feeding_id,
             batch_id: req.batch_id,
             quantity_kg: qty_kg,
+            created_at,
+            created_by,
         }),
     ))
 }

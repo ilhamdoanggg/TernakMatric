@@ -9,6 +9,7 @@ chrono.workspace = true
 infra-auth.workspace = true
 infra-db.workspace = true
 serde.workspace = true
+serde_json.workspace = true
 shared-kernel.workspace = true
 sqlx.workspace = true
 utoipa.workspace = true

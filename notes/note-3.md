@@ -1,3 +1,7 @@
+# note-3 — Database Architecture dan Final Data Modeling
+
+> Catatan perjalanan desain. Versi terawat: [../docs/05-DOMAIN-MODEL.md](../docs/05-DOMAIN-MODEL.md). Indeks: [../docs/README.md](../docs/README.md).
+
 Kita lanjutkan TernakMatric ke tahap **Database Architecture & Final Data Modeling**.
 
 Dengan keputusan terbaru, ada empat hal yang akan memengaruhi desain database secara signifikan:
@@ -18,9 +22,9 @@ Saya akan menggunakan prinsip berikut:
 - Idempotency untuk transaksi offline.
 - Soft delete untuk master data yang perlu dipertahankan histori.
 
-## **1. Final architecture dan keputusan domain**
+## 1. Final architecture dan keputusan domain
 
-## **TernakMatric Database Architecture**
+### TernakMatric Database Architecture
 
 Architecture baseline v1.0
 
@@ -60,7 +64,7 @@ Devices, sync operations, conflicts
 
 Audit logs, RLS, permissions
 
-### **Keputusan penting: relasi unit produksi dan batch**
+#### Keputusan penting: relasi unit produksi dan batch
 
 Saya memilih relasi:
 
@@ -80,11 +84,11 @@ Contoh (kasus kolam ikan, salah satu kategori):
 
 Ketiga batch bisa aktif bersamaan. Pola yang sama berlaku untuk kandang unggas (poultry), kandang babi/sapi (mammal), atau rak serangga (insect). Sistem harus memvalidasi total biomassa dan kapasitas unit berdasarkan profil produksi spesies berversi yang digunakan.
 
-## **2. Final ERD**
+## 2. Final ERD
 
 ERD berikut dibagi menjadi beberapa domain agar lebih mudah dipahami dan diimplementasikan.
 
-### **A. Tenant, identity, dan farm**
+### A. Tenant, identity, dan farm
 
 ```mermaid
 erDiagram
@@ -96,7 +100,7 @@ erDiagram
   PRODUCTION_SYSTEMS ||--o{ PRODUCTION_UNITS : uses
 ```
 
-### **B. Species dan production**
+### B. Species dan production
 
 ```mermaid
 erDiagram
@@ -112,7 +116,7 @@ erDiagram
   PRODUCTION_BATCHES ||--o{ PRODUCTION_OUTPUTS : produces
 ```
 
-### **C. Inventory dan financial**
+### C. Inventory dan financial
 
 ```mermaid
 erDiagram
@@ -127,7 +131,7 @@ erDiagram
   SALES ||--o{ SALE_ITEMS : contains
 ```
 
-### **D. Offline synchronization**
+### D. Offline synchronization
 
 ```mermaid
 erDiagram
@@ -141,7 +145,7 @@ erDiagram
 
 ERD ini merupakan logical relationship map. Implementasi fisiknya juga akan menggunakan composite foreign keys untuk memastikan relasi tidak menyeberang tenant.
 
-## **3. PostgreSQL schema dan migration**
+## 3. PostgreSQL schema dan migration
 
 Saya sudah menyiapkan paket database dengan struktur berikut.
 
@@ -183,7 +187,7 @@ File individual:
 - ERD documentation
 - Installation README
 
-## **4. Tenant isolation strategy**
+## 4. Tenant isolation strategy
 
 Ini bagian yang sangat penting untuk model SaaS.
 
@@ -233,7 +237,7 @@ Pemanggilan tersebut harus dilakukan dalam transaksi yang sama dengan query tena
 
 Penting: runtime database user tidak boleh menjadi superuser, table owner, atau mempunyai `BYPASSRLS`.
 
-## **5. Full offline synchronization**
+## 5. Full offline synchronization
 
 Untuk mobile, saya merekomendasikan model **offline-first command synchronization**.
 
@@ -271,7 +275,7 @@ Misalnya, dua operator offline di lapangan/kandang/kolam mencatat pengeluaran pa
 
 **Catatan pengembangan:** schema saat ini menyediakan tabel dasar `devices`, `sync_operations`, dan `sync_conflicts`. Implementasi production masih memerlukan server change-feed/cursor, entity versioning, transactional outbox, serta mekanisme resolusi konflik yang lengkap.
 
-## **6. Constraints dan indexes yang perlu diperhatikan**
+## 6. Constraints dan indexes yang perlu diperhatikan
 
 Berikut aturan database yang perlu menjadi invariant sistem.
 
@@ -291,7 +295,7 @@ Berikut aturan database yang perlu menjadi invariant sistem.
 
 Beberapa aturan tersebut tidak bisa diselesaikan hanya dengan SQL `CHECK`, karena membutuhkan perhitungan lintas baris. Implementasikan menggunakan transaksi database, row locking, dan domain validation.
 
-### **Index yang penting**
+### Index yang penting
 
 | Index                                         | Tujuan                              |
 | --------------------------------------------- | ----------------------------------- |
@@ -306,11 +310,11 @@ Beberapa aturan tersebut tidak bisa diselesaikan hanya dengan SQL `CHECK`, karen
 
 Sebagian index sudah disediakan dalam migration. Sisanya perlu disesuaikan setelah melihat pola query dan volume data sebenarnya.
 
-## **7. Hal yang wajib diselesaikan sebelum production**
+## 7. Hal yang wajib diselesaikan sebelum production
 
 Saya tidak akan menyebut migration ini production-ready sebelum beberapa hal berikut diperkuat.
 
-## **Database hardening checklist**
+### Database hardening checklist
 
 Belum seluruhnya diterapkan
 
@@ -332,7 +336,7 @@ Ada pula dua hal yang sengaja belum saya tetapkan:
 
 Nilai tersebut perlu berasal dari `species_production_profiles.parameters` berversi dengan referensi yang dapat dipertanggungjawabkan, divalidasi berdasarkan spesies, sistem produksi, dan kondisi lapangan/kandang/kolam.
 
-# **8. Urutan implementasi berikutnya**
+## 8. Urutan implementasi berikutnya
 
 Setelah database, saya menyarankan urutan engineering seperti ini:
 
@@ -362,9 +366,9 @@ Setelah database, saya menyarankan urutan engineering seperti ini:
 
 Target arsitektur akhirnya:
 
-- Web: Next.js + TypeScript.
+- Web: Vue 3 SSR + TypeScript (Vite).
 - Mobile: React Native + Expo + local SQLite.
-- Backend: Rust + Axum; kontrak OpenAPI dari Utoipa di `packages/api-contracts/openapi/ternakmatric.v1.yaml` (SQLx, bukan SQLC).
+- Backend: Rust + Axum; kontrak OpenAPI dari Utoipa di `packages/api-contracts/openapi/ternakmatric.v1.json` (SQLx, bukan SQLC).
 - Database: PostgreSQL.
 - Communication: REST API dengan parameter path `{id}`.
 - Offline synchronization: command queue + version-based conflict resolution; `client_wins` dilarang untuk ledger dan finance.

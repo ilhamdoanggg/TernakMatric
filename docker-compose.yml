@@ -1,0 +1,42 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: ternakmatric-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-ternakmatric}
+      POSTGRES_USER: ${POSTGRES_USER:-ternakmatric_migrator}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ternakmatric_migrator_dev}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - ternakmatric_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ternakmatric_migrator} -d ${POSTGRES_DB:-ternakmatric}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+  db-migrate:
+    image: postgres:16-alpine
+    container_name: ternakmatric-db-migrate
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+    environment:
+      PGHOST: postgres
+      PGPORT: 5432
+      PGDATABASE: ${POSTGRES_DB:-ternakmatric}
+      PGUSER: ${POSTGRES_USER:-ternakmatric_migrator}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-ternakmatric_migrator_dev}
+      APP_DB_USER: ${APP_DB_USER:-ternakmatric_app}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:-ternakmatric_app_dev}
+    volumes:
+      - ./backend/migrations:/migrations:ro
+      - ./deploy/db:/deploy-db:ro
+    entrypoint: ["/bin/sh", "/deploy-db/run-migrations.sh"]
+
+volumes:
+  ternakmatric_pgdata:

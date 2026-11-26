@@ -11,6 +11,7 @@ infra-db.workspace = true
 mod-calculation.workspace = true
 rust_decimal.workspace = true
 serde.workspace = true
+serde_json.workspace = true
 shared-kernel.workspace = true
 sqlx.workspace = true
 utoipa.workspace = true

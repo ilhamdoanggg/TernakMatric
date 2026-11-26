@@ -3,7 +3,7 @@ use axum::routing::get;
 use axum::{Json, Router};
 use chrono::{DateTime, Utc};
 use infra_auth::{ApiError, AppBackendState, AuthPrincipal, Permission};
-use infra_db::map_sqlx_err;
+use infra_db::{map_sqlx_err, AuditLogger};
 use serde::{Deserialize, Serialize};
 use shared_kernel::SpeciesCategory;
 use utoipa::{OpenApi, ToSchema};
@@ -35,6 +35,9 @@ pub struct SpeciesDto {
     pub is_system: bool,
     pub is_active: bool,
     pub created_at: DateTime<Utc>,
+    pub created_by: Option<Uuid>,
+    pub updated_at: DateTime<Utc>,
+    pub updated_by: Option<Uuid>,
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
@@ -59,6 +62,10 @@ pub struct SpeciesProfileDto {
     pub is_active: bool,
     pub valid_from: DateTime<Utc>,
     pub valid_until: Option<DateTime<Utc>>,
+    pub created_at: DateTime<Utc>,
+    pub created_by: Option<Uuid>,
+    pub updated_at: DateTime<Utc>,
+    pub updated_by: Option<Uuid>,
 }
 
 #[utoipa::path(
@@ -76,7 +83,8 @@ pub async fn list_species<S: AppBackendState>(
     let category_str = filter.category.map(|c| c.as_str().to_string());
     let rows: Vec<SpeciesDto> = sqlx::query_as(
         r#"
-        SELECT id, organization_id, category, common_name, scientific_name, code, description, is_system, is_active, created_at
+        SELECT id, organization_id, category, common_name, scientific_name, code, description,
+               is_system, is_active, created_at, created_by, updated_at, updated_by
         FROM species
         WHERE (organization_id IS NULL OR organization_id = $1)
           AND ($2::text IS NULL OR category = $2)
@@ -109,9 +117,10 @@ pub async fn create_custom_species<S: AppBackendState>(
     let mut tx = auth.context().begin_tx(state.pool()).await.map_err(ApiError)?;
     let row: SpeciesDto = sqlx::query_as(
         r#"
-        INSERT INTO species (organization_id, category, common_name, scientific_name, code, description, is_system)
-        VALUES ($1, $2, $3, $4, $5, $6, false)
-        RETURNING id, organization_id, category, common_name, scientific_name, code, description, is_system, is_active, created_at
+        INSERT INTO species (organization_id, category, common_name, scientific_name, code, description, is_system, created_by)
+        VALUES ($1, $2, $3, $4, $5, $6, false, $7)
+        RETURNING id, organization_id, category, common_name, scientific_name, code, description,
+                  is_system, is_active, created_at, created_by, updated_at, updated_by
         "#,
     )
     .bind(auth.organization_id.0)
@@ -120,9 +129,24 @@ pub async fn create_custom_species<S: AppBackendState>(
     .bind(&req.scientific_name)
     .bind(req.code.trim().to_uppercase())
     .bind(&req.description)
+    .bind(auth.user_id.0)
     .fetch_one(&mut *tx)
     .await
     .map_err(|e| ApiError(map_sqlx_err(e)))?;
+
+    AuditLogger::record(
+        &mut tx,
+        Some(auth.organization_id),
+        Some(auth.user_id),
+        "species.created",
+        "species",
+        Some(row.id),
+        None,
+        Some(serde_json::to_value(&row).unwrap_or_default()),
+    )
+    .await
+    .map_err(ApiError)?;
+
     tx.commit().await.map_err(|e| ApiError(map_sqlx_err(e)))?;
     Ok((axum::http::StatusCode::CREATED, Json(row)))
 }
@@ -142,7 +166,8 @@ pub async fn list_profiles<S: AppBackendState>(
     let mut tx = auth.context().begin_tx(state.pool()).await.map_err(ApiError)?;
     let rows: Vec<SpeciesProfileDto> = sqlx::query_as(
         r#"
-        SELECT id, organization_id, species_id, code, name, production_system_id, parameters, version, is_active, valid_from, valid_until
+        SELECT id, organization_id, species_id, code, name, production_system_id, parameters,
+               version, is_active, valid_from, valid_until, created_at, created_by, updated_at, updated_by
         FROM species_production_profiles
         WHERE organization_id = $1 AND species_id = $2
         ORDER BY code ASC, version DESC
@@ -176,10 +201,11 @@ pub async fn create_profile<S: AppBackendState>(
     let row: SpeciesProfileDto = sqlx::query_as(
         r#"
         INSERT INTO species_production_profiles (
-            organization_id, species_id, code, name, production_system_id, parameters, version
+            organization_id, species_id, code, name, production_system_id, parameters, version, created_by
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
-        RETURNING id, organization_id, species_id, code, name, production_system_id, parameters, version, is_active, valid_from, valid_until
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        RETURNING id, organization_id, species_id, code, name, production_system_id, parameters,
+                  version, is_active, valid_from, valid_until, created_at, created_by, updated_at, updated_by
         "#,
     )
     .bind(auth.organization_id.0)
@@ -189,9 +215,24 @@ pub async fn create_profile<S: AppBackendState>(
     .bind(req.production_system_id)
     .bind(&req.parameters)
     .bind(req.version.unwrap_or(1))
+    .bind(auth.user_id.0)
     .fetch_one(&mut *tx)
     .await
     .map_err(|e| ApiError(map_sqlx_err(e)))?;
+
+    AuditLogger::record(
+        &mut tx,
+        Some(auth.organization_id),
+        Some(auth.user_id),
+        "species_profile.created",
+        "species_production_profiles",
+        Some(row.id),
+        None,
+        Some(serde_json::to_value(&row).unwrap_or_default()),
+    )
+    .await
+    .map_err(ApiError)?;
+
     tx.commit().await.map_err(|e| ApiError(map_sqlx_err(e)))?;
     Ok((axum::http::StatusCode::CREATED, Json(row)))
 }

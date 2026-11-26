@@ -30,3 +30,15 @@ Perhitungan produksi ternak adalah nilai jual TernakMatric: kapasitas unit produ
 - Seed data di `002_ternakmatric_seed.sql` harus mengisi species pada kategori `fish | crustacean | mollusk | poultry | mammal | reptile | insect | other`, unit types, production systems, dan `species_production_profiles` dengan `version`, `valid_from`/`valid_until`, serta sumber referensi.
 - API analytics mengembalikan estimasi beserta `assumptions`, `formula_version`, dan tanggal sampling terakhir — bukan angka tunggal tanpa konteks.
 - Perubahan rumus dibuat sebagai versi baru; hasil historis tidak dihitung ulang dengan rumus baru.
+
+---
+
+## Catatan implementasi (2026-11-26)
+
+Keputusan di atas tetap berlaku. Catatan ini menyelaraskan ekspektasi dengan kondisi aktual tanpa mengubah ADR:
+
+- `mod-calculation` sudah berupa crate murni; seluruh input, termasuk `calculated_at`, menjadi parameter.
+- `species_production_profiles` saat ini dibuat dan dikelola **oleh tenant**, bukan di-seed dengan angka universal. Konsekuensi di atas yang menyebut seed profil pada `002_ternakmatric_seed.sql` dimaknai sebagai **katalog species dan metadata formula**, bukan penanaman parameter husbandry. Profile berversi tetap menjadi sumber parameter saat kalkulasi.
+- Daftar metrik yang benar-benar diimplementasikan dapat berbeda dari daftar rencana di poin 2; rujukannya adalah `backend/crates/mod-calculation/src/` dan `calculation_versions` di `backend/migrations/2026112409_seed_catalogs.sql`.
+- `CalculationResult` membawa `formula_code`, `formula_version`, `parameter_version`, `calculated_at`, dan `assumptions` seperti disepakati.
+- Utang terkait seed/profile dan hardening tercatat di [`../../notes/note-4-migration-audit.md`](../../notes/note-4-migration-audit.md).

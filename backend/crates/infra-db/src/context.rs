@@ -18,14 +18,17 @@ impl OrganizationContext {
         }
     }
 
-    /// Opens a PostgreSQL transaction and sets `app.current_organization_id` via `SET LOCAL`
-    /// so RLS policies apply safely even with pooled connections.
+    /// Opens a PostgreSQL transaction and sets both `app.current_organization_id` (RLS)
+    /// and `app.current_user_id` (automatic `created_by` / `updated_by` triggers) via `SET LOCAL`.
     pub async fn begin_tx<'a>(
         &self,
         pool: &'a PgPool,
     ) -> Result<Transaction<'a, Postgres>, AppError> {
         let mut tx = pool.begin().await.map_err(map_sqlx_err)?;
         with_organization(&mut *tx, self.organization_id)
+            .await
+            .map_err(map_sqlx_err)?;
+        with_user(&mut *tx, self.user_id)
             .await
             .map_err(map_sqlx_err)?;
         Ok(tx)
@@ -41,6 +44,17 @@ where
 {
     sqlx::query("SELECT set_config('app.current_organization_id', $1, true)")
         .bind(org_id.0.to_string())
+        .execute(executor)
+        .await?;
+    Ok(())
+}
+
+pub async fn with_user<'e, E>(executor: E, user_id: UserId) -> Result<(), sqlx::Error>
+where
+    E: sqlx::PgExecutor<'e>,
+{
+    sqlx::query("SELECT set_config('app.current_user_id', $1, true)")
+        .bind(user_id.0.to_string())
         .execute(executor)
         .await?;
     Ok(())
