@@ -1,16 +1,20 @@
+# note-2 — Product Requirements Document
+
+> Catatan perjalanan desain. Versi terawat: [../docs/02-PRODUCT-REQUIREMENTS.md](../docs/02-PRODUCT-REQUIREMENTS.md). Indeks: [../docs/README.md](../docs/README.md).
+
 Kita tetapkan TernakMatric sebagai produk **SaaS Multi-Tenant Animal Production Management Platform** yang mendukung ikan, unggas, babi, kambing/domba, sapi/kerbau, kelinci, crustacean, mollusk, serangga, dan spesies ternak lainnya, berbagai skala usaha, serta akses melalui web maupun mobile.
 
 Ada satu keputusan arsitektur yang penting: meskipun TernakMatric mendukung banyak spesies, parameter produksi tidak boleh disamaratakan. Lele, nila, gurame, dan patin (fish) memiliki karakteristik berbeda; demikian pula ayam broiler dan layer (poultry), babi dan sapi perah (mammal), udang (crustacean), kerang (mollusk), ular (reptile), serta jangkrik dan maggot (insect). Karena itu, TernakMatric memakai konfigurasi produksi per spesies dan sistem produksi melalui `species_production_profiles` yang berversi — bukan angka universal yang di-hardcode.
 
 Di bawah ini adalah dokumen fondasi produk versi 1.0 yang bisa menjadi acuan Product, UI/UX, Backend, Frontend, QA, dan Database Engineering.
 
-# **TernakMatric — Product Requirements Document**
+## TernakMatric — Product Requirements Document
 
 Product definition v1.0
 
 SaaS
 
-# **TernakMatric**
+### TernakMatric
 
 **Smart Animal Production Management System**
 
@@ -30,7 +34,7 @@ Platform digital untuk mengelola operasional produksi ternak — ikan di kolam, 
 
 Status: Draft untuk validasi Product Discovery · Dokumen: FM-PRD-001
 
-## **1. Product Vision**
+## 1. Product Vision
 
 **Vision**
 
@@ -45,7 +49,7 @@ Menjadi platform manajemen produksi ternak yang membantu peternak dari semua kat
 5. Memberikan transparansi biaya dan keuntungan.
 6. Membantu peternak mengelola beberapa unit produksi (kolam, kandang, cage, hive) dan lokasi dalam satu sistem.
 
-### **Value proposition / persona**
+### Value proposition / persona
 
 | Pengguna                         | Nilai yang diberikan                                      |
 | -------------------------------- | --------------------------------------------------------- |
@@ -60,7 +64,7 @@ Menjadi platform manajemen produksi ternak yang membantu peternak dari semua kat
 | Farm manager                     | Monitoring performa tim dan produksi                      |
 | Business owner                   | Analisis biaya, omzet, dan profit                         |
 
-## **2. Problem Statements**
+## 2. Problem Statements
 
 TernakMatric harus menyelesaikan masalah operasional yang nyata, bukan sekadar menyediakan fitur.
 
@@ -75,7 +79,7 @@ TernakMatric harus menyelesaikan masalah operasional yang nyata, bukan sekadar m
 | PS-07 | Biaya operasional tersebar di berbagai catatan                  | Profit sulit dihitung               | Financial management         |
 | PS-08 | Banyak unit produksi sulit dipantau secara bersamaan            | Inefisiensi operasional             | Farm dashboard               |
 
-### **Hipotesis produk**
+### Hipotesis produk
 
 Kita memiliki beberapa hipotesis yang harus divalidasi kepada calon pengguna:
 
@@ -87,7 +91,7 @@ Kita memiliki beberapa hipotesis yang harus divalidasi kepada calon pengguna:
 
 Hipotesis ini belum boleh dianggap sebagai fakta pasar. Kita perlu melakukan wawancara dan uji coba lapangan.
 
-## **3. Product Scope dan Modul**
+## 3. Product Scope dan Modul
 
 Saya membagi produk menjadi tiga kelompok besar.
 
@@ -129,7 +133,7 @@ V2
 
 Catatan: environment readings manual tetap masuk MVP sebagai fitur dasar, tetapi integrasi sensor otomatis masuk V2.
 
-# **4. User Roles dan Permission**
+## 4. User Roles dan Permission
 
 Karena modelnya SaaS multi-tenant, kita perlu memisahkan identitas pengguna, organisasi, dan akses terhadap sumber daya.
 
@@ -153,7 +157,7 @@ Contoh:
 
 Ini alasan kita tidak boleh menyimpan `role` langsung di tabel `users` sebagai satu role global.
 
-## **5. User Stories**
+## 5. User Stories
 
 Berikut backlog awal yang bisa langsung digunakan untuk perencanaan sprint.
 
@@ -180,11 +184,11 @@ Berikut backlog awal yang bisa langsung digunakan untuk perencanaan sprint.
 
 User story US-018 dipenuhi lewat mobile app React Native + Expo dengan SQLite lokal dan command queue untuk offline-first sync, sesuai keputusan di note-3. Web tetap responsive, tetapi bukan pengganti aplikasi mobile.
 
-# **6. Functional Requirements**
+## 6. Functional Requirements
 
 Bagian ini mendefinisikan perilaku sistem secara lebih teknis.
 
-### **6.1 Organization Management**
+### 6.1 Organization Management
 
 - Setiap organisasi memiliki tenant ID.
 - Setiap tenant memiliki satu atau lebih farm.
@@ -192,7 +196,7 @@ Bagian ini mendefinisikan perilaku sistem secara lebih teknis.
 - Data antar-tenant wajib terisolasi.
 - Subscription dan plan terhubung ke organisasi.
 
-### **6.2 Farm & Production Unit Management**
+### 6.2 Farm & Production Unit Management
 
 Setiap unit produksi (`production_units`) mempunyai:
 
@@ -205,7 +209,7 @@ Setiap unit produksi (`production_units`) mempunyai:
 
 Sistem harus dapat menghitung kapasitas unit produksi berdasarkan profil spesies dan sistem produksi, dengan mempertimbangkan total biomassa/okupansi semua batch aktif yang menempati unit tersebut. Contoh kolam ikan adalah satu kasus; kandang ayam atau sapi mengikuti pola yang sama dengan profil berbeda.
 
-### **6.3 Species Management**
+### 6.3 Species Management
 
 Kita memerlukan master data spesies dengan kategori tepat: `fish | crustacean | mollusk | poultry | mammal | reptile | insect | other`.
 
@@ -237,7 +241,7 @@ Data konfigurasi spesies (`species` + `species_production_profiles`) perlu menca
 
 Jangan hardcode semua rekomendasi tersebut di source code. Simpan sebagai data yang bisa dikonfigurasi dan berversi.
 
-### **6.4 Production Batch**
+### 6.4 Production Batch
 
 Batch merupakan pusat seluruh aktivitas produksi ternak.
 
@@ -256,7 +260,7 @@ Contoh lain: kandang B2 dengan ayam layer (poultry), `initial_count` 500 ekor, o
 
 Semua catatan pakan, pertumbuhan, kematian/kelahiran, lingkungan, biaya, dan output produksi harus memiliki referensi ke batch.
 
-### **6.5 Feeding Management**
+### 6.5 Feeding Management
 
 Sistem harus mendukung:
 
@@ -268,7 +272,7 @@ Sistem harus mendukung:
 - Pencatatan pakan yang tidak termakan jika tersedia.
 - Rekap konsumsi harian dan total, serta perbandingan dengan `feeding_guidelines` spesies.
 
-### **6.6 Growth Monitoring**
+### 6.6 Growth Monitoring
 
 Setiap `growth_samples` menyimpan:
 
@@ -281,7 +285,7 @@ Setiap `growth_samples` menyimpan:
 
 Catatan kesehatan (`health_records`) dan koleksi telur/susu juga terhubung ke batch yang sama.
 
-### **6.7 Output Management (Panen / Telur / Susu)**
+### 6.7 Output Management (Panen / Telur / Susu)
 
 Output produksi (`production_outputs`) dapat berupa meat, egg, milk, fry, cull, offspring, atau other; panen daging/fry dapat dilakukan sebagian maupun seluruhnya.
 
@@ -296,7 +300,7 @@ Sistem perlu mendukung:
 
 Ini penting karena satu batch tidak selalu menghasilkan satu jenis output atau dipanen sekaligus.
 
-### **6.8 Financial Management**
+### 6.8 Financial Management
 
 Pisahkan biaya dan pendapatan berdasarkan batch.
 
@@ -314,13 +318,13 @@ Kategori biaya awal:
 
 Laporan finansial harus membedakan pendapatan, biaya langsung, biaya operasional, dan profit. Jangan menganggap omzet dikurangi biaya pakan saja sebagai keuntungan bersih.
 
-# **7. Business Rules dan Calculation Engine**
+## 7. Business Rules dan Calculation Engine
 
 Ini merupakan bagian paling penting dari TernakMatric.
 
 Saya menyarankan semua kalkulasi diletakkan dalam satu domain bernama `Calculation Engine`, terpisah dari controller dan UI.
 
-## **7.1 Unit capacity (kapasitas unit produksi)**
+### 7.1 Unit capacity (kapasitas unit produksi)
 
 Untuk unit berbasis air (kolam/tambak; contoh kategori fish/crustacean):
 
@@ -341,7 +345,7 @@ Untuk kandang, cage, hive, atau rak insect, kapasitas dihitung dari `area_m2` at
 
 Density/okupansi tidak boleh menggunakan satu angka global. Harus mengikuti kategori dan spesies (fish | crustacean | mollusk | poultry | mammal | reptile | insect | other), sistem produksi, ukuran awal, dan kondisi lingkungan. Sumbernya adalah `species_production_profiles.parameters` berversi. Validasi kapasitas dilakukan transaksional terhadap total biomassa/okupansi seluruh batch aktif pada unit.
 
-## **7.2 Population tracking**
+### 7.2 Population tracking
 
 Populasi aktual:
 
@@ -359,13 +363,13 @@ Populasi aktual:
 
 `egg_collection` dan `milk_collection` adalah output produksi, bukan pergerakan yang mengurangi populasi.
 
-## **7.3 Survival rate**
+### 7.3 Survival rate
 
 \\[ SR = \frac{P\_{alive}}{P\_{stocked}} \times 100\\% \\]
 
 `P_stocked` adalah jumlah ternak yang pernah masuk ke batch: `initial_count` + `additional_stock` + `birth` + `purchase` + `transfer_in`. Untuk batch yang mengalami partial harvest, cull, atau transfer, kita perlu menentukan denominator berdasarkan definisi metrik dan menyimpan riwayat `stock_movements` ternak (ikan, ayam, babi, sapi, dll.). Jangan menggunakan satu rumus tanpa memperhatikan perubahan populasi.
 
-## **7.4 Average Body Weight**
+### 7.4 Average Body Weight
 
 \\[ ABW = \frac{Total\ Weight\ Sample}{Sample\ Count} \\]
 
@@ -377,11 +381,11 @@ Contoh (kasus ikan):
 
 Rumus yang sama dipakai untuk sampel ayam, babi, kambing, atau sapi dengan satuan yang sesuai.
 
-## **7.5 Weight gain / ADG**
+### 7.5 Weight gain / ADG
 
 `ADG = (ABW_akhir - ABW_awal) / jumlah hari`. Target ADG berasal dari profil spesies (`species_production_profiles`), bukan angka universal lintas spesies.
 
-## **7.6 Biomass estimation**
+### 7.6 Biomass estimation
 
 \\[ Biomass = Population \times ABW \\]
 
@@ -391,13 +395,13 @@ Jika populasi estimasi 1.000 ekor dan ABW 100 gram:
 
 Hasil ini merupakan estimasi, bukan penimbangan aktual seluruh ternak.
 
-## **7.7 Feed Conversion Ratio**
+### 7.7 Feed Conversion Ratio
 
 \\[ FCR = \frac{Total\ Feed}{Biomass\ Gain} \\]
 
 FCR harus menggunakan periode pengamatan yang konsisten dan memperhitungkan output panen, kematian, serta cull sesuai metode yang dipilih. Untuk layer dan dairy, gunakan metrik spesies seperti `egg_rate` dan `milk_yield` sebagai pelengkap, bukan FCR daging.
 
-## **7.8 Output forecast**
+### 7.8 Output forecast
 
 \\[ EstimatedOutput = EstimatedPopulation \times ForecastABW \\]
 
@@ -415,7 +419,7 @@ Prediksi harus menyertakan:
 
 Untuk MVP, gunakan estimasi berbasis sampling dan survival assumption. Jangan dulu menjanjikan prediksi AI.
 
-## **7.9 Financial calculation**
+### 7.9 Financial calculation
 
 \\[ Revenue = \sum SaleItem(amount) \text{ untuk } production\_outputs \\]
 
@@ -423,7 +427,7 @@ Untuk MVP, gunakan estimasi berbasis sampling dan survival assumption. Jangan du
 
 Pendapatan dihitung dari `sale_items` yang mereferensikan `production_outputs` (daging, telur, susu, fry, offspring, dll.), bukan hanya berat panen. Biaya harus mencakup pengeluaran yang relevan dan tidak boleh dihitung ganda. Ledger dan konflik finansial tidak boleh memakai strategi `client_wins`.
 
-## **7.10 Data integrity rules**
+### 7.10 Data integrity rules
 
 Beberapa aturan wajib:
 
@@ -436,13 +440,13 @@ Beberapa aturan wajib:
 7. Data historis tidak boleh berubah ketika konfigurasi spesies diperbarui.
 8. Semua perhitungan harus mencatat versi formula dan parameter yang digunakan (`species_production_profiles`).
 
-# **8. Database Design — Logical Data Model**
+## 8. Database Design — Logical Data Model
 
 Sekarang kita masuk ke rancangan database.
 
 Saya menyarankan PostgreSQL dengan pendekatan normalized relational database.
 
-### **A. Tenant & Identity**
+### A. Tenant & Identity
 
 | Table                | Fungsi                        |
 | -------------------- | ----------------------------- |
@@ -456,7 +460,7 @@ Saya menyarankan PostgreSQL dengan pendekatan normalized relational database.
 | subscriptions        | Paket langganan               |
 | plans                | Definisi paket SaaS           |
 
-### **B. Farm & Infrastructure**
+### B. Farm & Infrastructure
 
 | Table               | Fungsi                                                         |
 | ------------------- | -------------------------------------------------------------- |
@@ -465,7 +469,7 @@ Saya menyarankan PostgreSQL dengan pendekatan normalized relational database.
 | production_systems  | Sistem produksi per kategori spesies                            |
 | production_units    | Unit produksi: kapasitas, dimensi, area, volume                 |
 
-### **C. Species & Feed**
+### C. Species & Feed
 
 | Table                      | Fungsi                                                    |
 | -------------------------- | --------------------------------------------------------- |
@@ -476,7 +480,7 @@ Saya menyarankan PostgreSQL dengan pendekatan normalized relational database.
 | feed_products              | Master produk pakan/ransum                                |
 | feed_unit_conversions      | Konversi satuan pakan                                     |
 
-### **D. Production**
+### D. Production
 
 | Table                 | Fungsi                                              |
 | --------------------- | --------------------------------------------------- |
@@ -492,7 +496,7 @@ Saya menyarankan PostgreSQL dengan pendekatan normalized relational database.
 | mortality_records     | Catatan kematian                                    |
 | production_outputs    | Output: meat, egg, milk, fry, cull, offspring, other |
 
-### **E. Financial**
+### E. Financial
 
 | Table              | Fungsi                       |
 | ------------------ | ---------------------------- |
@@ -502,7 +506,7 @@ Saya menyarankan PostgreSQL dengan pendekatan normalized relational database.
 | sale_items         | Detail penjualan; `production_output_id` |
 | financial_accounts | Kas dan rekening operasional |
 
-### **F. System & Audit**
+### F. System & Audit
 
 | Table                | Fungsi                          |
 | -------------------- | ------------------------------- |
@@ -516,11 +520,11 @@ Saya menyarankan PostgreSQL dengan pendekatan normalized relational database.
 | sync_conflicts       | Konflik sinkronisasi            |
 | outbox_events        | Event transaksional/change-feed |
 
-## **9. Entity Relationship Diagram**
+## 9. Entity Relationship Diagram
 
 Berikut gambaran hubungan utama database.
 
-## **TernakMatric — Core ERD**
+### TernakMatric — Core ERD
 
 Logical relationships · Simplified
 
@@ -544,7 +548,7 @@ erDiagram
 
 ERD ini menunjukkan relasi inti, bukan seluruh foreign key dan atribut final.
 
-### **9.1 Contoh struktur tabel inti**
+### 9.1 Contoh struktur tabel inti
 
 Berikut contoh struktur konseptual tabel `production_batches`:
 
@@ -564,7 +568,7 @@ Berikut contoh struktur konseptual tabel `production_batches`:
 
 Relasi ke `production_units` disimpan terpisah di `batch_unit_assignments`: satu assignment aktif per batch, banyak batch dapat berbagi satu unit.
 
-### **9.2 Keputusan penting dalam database**
+### 9.2 Keputusan penting dalam database
 
 **Tenant isolation**
 
@@ -591,7 +595,7 @@ Jadikan `stock_movements` sebagai sumber histori populasi semua spesies. `initia
 
 Simpan harga dan jumlah saat transaksi terjadi. Jangan menghitung ulang transaksi historis berdasarkan harga master pakan atau harga jual terbaru.
 
-# **10. System Architecture**
+## 10. System Architecture
 
 Untuk TernakMatric, saya merekomendasikan Modular Monolith dengan API terpusat.
 
@@ -613,19 +617,19 @@ flowchart LR
   Jobs --> Notify[Notifications]
 ```
 
-### **Recommended technology stack**
+### Recommended technology stack
 
 Berdasarkan kebutuhan produk dan kompleksitasnya:
 
 | Layer           | Rekomendasi             |
 | --------------- | ----------------------- |
-| Web             | Next.js + TypeScript    |
+| Web             | Vue 3 SSR + TypeScript (Vite)    |
 | Mobile          | React Native + Expo + SQLite (offline-first) |
 | Backend         | Rust + Axum             |
 | Database        | PostgreSQL              |
 | Query layer     | SQLx (bukan SQLC)       |
 | Cache           | Redis (jika diperlukan) |
-| API             | REST API + OpenAPI dari Utoipa (`ternakmatric.v1.yaml`) |
+| API             | REST API + OpenAPI dari Utoipa (`ternakmatric.v1.json`) |
 | Authentication  | JWT + refresh token     |
 | File storage    | S3-compatible storage   |
 | Background jobs | Asynchronous worker     |
@@ -637,107 +641,17 @@ Mengapa Rust?
 - Cocok untuk API transaksional dengan async/concurrent via Tokio.
 - Calculation engine bisa dibuat sebagai crate pure domain yang deterministik dan mudah diuji.
 - Batas modul ditegakkan oleh internal crates dalam satu Cargo workspace.
-- SQLx memberikan query yang diperiksa saat compile dan metadata offline untuk CI (`sqlx prepare --check`).
+- SQLx memakai query runtime; tidak ada cache `.sqlx/` dan CI tidak menjalankan `sqlx prepare --check`.
 - Utoipa menghasilkan OpenAPI langsung dari handler, lalu TypeScript client di-generate untuk Web & Mobile.
 - Axum dipakai di `bins/api-server`; job latar belakang dipisah di `bins/worker`.
 
 Keputusan akhir: backend TernakMatric ditulis dalam Rust, bukan Go maupun Spring Boot.
 
-### **Rekomendasi struktur repository**
+### Rekomendasi struktur repository
 
-```
-ternakmatric/
-├── .github/
-│   └── workflows/
-│       ├── backend-ci.yml            # cargo fmt, clippy, sqlx prepare check, & cargo test
-│       ├── web-ci.yml                # Typecheck, lint, & build Next.js
-│       └── mobile-ci.yml             # Build & test mobile client
-│
-├── docs/                             # Fondasi dokumentasi sistem
-│   ├── 01-PROBLEM-DISCOVERY.md
-│   ├── 02-PRODUCT-REQUIREMENTS.md
-│   ├── 03-USER-STORIES.md
-│   ├── 04-BUSINESS-RULES.md
-│   ├── 05-DOMAIN-MODEL.md
-│   ├── 06-DATABASE-ERD.md
-│   ├── 07-SYSTEM-ARCHITECTURE.md
-│   └── 08-API-SPECIFICATION.md
-│
-├── deploy/
-│   ├── docker/
-│   │   ├── backend.Dockerfile        # Multi-stage build (cargo-chef + distroless/alpine)
-│   │   └── web.Dockerfile
-│   └── docker-compose.yml            # PostgreSQL, Redis, Rust API, Worker, Web
-│
-├── packages/
-│   └── api-contracts/
-│       ├── openapi/
-│       │   └── ternakmatric.v1.yaml    # Di-export otomatis oleh Utoipa dari backend Rust
-│       └── generated/
-│           └── typescript/           # Tipe TS & API client untuk Web & Mobile
-│
-├── backend/                          # Rust Cargo Workspace (Modular Monolith)
-│   ├── Cargo.toml                    # Workspace manifest (members & shared dependencies)
-│   ├── Cargo.lock
-│   ├── migrations/                   # SQLx PostgreSQL migrations + RLS policies
-│   │   ├── 2026112401_init_identity_organizations.sql
-│   │   ├── 2026112402_init_farm_units_species.sql
-│   │   └── 2026112403_init_batches_ledgers.sql
-│   │
-│   ├── bins/                         # Entry points (Binary executables)
-│   │   ├── api-server/
-│   │   │   ├── Cargo.toml
-│   │   │   └── src/
-│   │   │       └── main.rs           # Bootstrap Axum router, state, & middleware
-│   │   └── worker/
-│   │       ├── Cargo.toml
-│   │       └── src/
-│   │           └── main.rs           # Background job: daily snapshot & alert evaluator
-│   │
-│   └── crates/                       # Internal Crates (Isolasi batas modul)
-│       ├── shared-kernel/            # Tipe dasar lintas modul: TenantId, BatchId, AppError, Decimal helpers
-│       ├── infra-db/                 # PgPool, OrganizationContext (SET LOCAL app.current_organization_id)
-│       ├── infra-auth/               # JWT verification, RBAC extractor, & idempotency guard
-│       │
-│       ├── mod-calculation/          # Pure Domain Logic (Tanpa DB/HTTP, 100% deterministic)
-│       │   ├── Cargo.toml
-│       │   └── src/
-│       │       ├── lib.rs
-│       │       ├── biomass.rs        # Estimasi populasi & biomassa harian
-│       │       ├── fcr.rs            # Biological FCR & Economic FCR (dengan panen parsial)
-│       │       ├── growth.rs         # ABW, ADG, SGR, egg rate, milk yield
-│       │       └── tests.rs          # Property-based & unit test rumus lintas spesies
-│       │
-│       ├── mod-tenant/               # Manajemen organisasi, farm, & user roles
-│       ├── mod-production-unit/      # Unit produksi (kolam, kandang, cage, hive), dimensi, kapasitas
-│       ├── mod-species/              # Master spesies & profil produksi berversi
-│       ├── mod-production/           # Batch, assignment, population ledger, growth, output
-│       ├── mod-feeding/              # Log pakan harian & rekomendasi pakan
-│       ├── mod-environment/          # Bacaan lingkungan (air, udara, tanah, kandang; webhook IoT V2)
-│       ├── mod-inventory/            # Gudang, pakan, transaksi, saldo, adjustment
-│       ├── mod-finance/              # Biaya operasional, HPP/COGS, & P&L per batch
-│       └── mod-sync/                 # Devices, sync operations, conflicts, idempotency
-│
-├── apps/
-│   ├── web/                          # Next.js + TypeScript (Dashboard & Analitik)
-│   │   └── src/
-│   │       ├── app/
-│   │       ├── components/
-│   │       ├── features/
-│   │       └── lib/
-│   │
-│   └── mobile/                       # Mobile App (Field Input & Offline-First Sync)
-│       └── src/
-│           ├── screens/
-│           ├── storage/              # SQLite lokal
-│           ├── sync/                 # Command queue, retry, cursor
-│           └── offline/              # Operasi pending & resolusi konflik
-│
-├── Makefile                          # Shortcut: make up, make migrate, make gen-openapi, make test
-└── README.md
-```
+Struktur direktori aktual tercantum di [`docs/09-REPOSITORY-STRUCTURE.md`](../docs/09-REPOSITORY-STRUCTURE.md). Catatan ini sengaja tidak memelihara salinan daftar direktori agar tidak kembali usang.
 
-# **11. API Specification — Rancangan Endpoint**
+## 11. API Specification — Rancangan Endpoint
 
 Kita bisa menggunakan REST API dengan prefix `/api/v1`.
 
@@ -762,9 +676,9 @@ Kita bisa menggunakan REST API dengan prefix `/api/v1`.
 | GET    | `/batches/{id}/analytics`        | Analisis batch                                |
 | GET    | `/dashboard/overview`            | Dashboard                                     |
 
-Catatan: Endpoint di atas adalah kontrak awal dengan parameter path `{id}` (bukan `:id`). Kontrak final di-export dari handler Axum/Utoipa ke `packages/api-contracts/openapi/ternakmatric.v1.yaml`. Untuk endpoint transaksi, kita perlu menentukan aturan idempotency, validasi stok/kapasitas, dan otorisasi sebelum implementasi; ledger dan finance tidak boleh memakai `client_wins`.
+Catatan: Endpoint di atas adalah kontrak awal dengan parameter path `{id}` (bukan `:id`). Kontrak final di-export dari handler Axum/Utoipa ke `packages/api-contracts/openapi/ternakmatric.v1.json`. Untuk endpoint transaksi, kita perlu menentukan aturan idempotency, validasi stok/kapasitas, dan otorisasi sebelum implementasi; ledger dan finance tidak boleh memakai `client_wins`.
 
-# **12. Non-Functional Requirements**
+## 12. Non-Functional Requirements
 
 TernakMatric bukan hanya harus berfungsi, tetapi juga aman dan konsisten.
 
@@ -785,7 +699,7 @@ TernakMatric bukan hanya harus berfungsi, tetapi juga aman dan konsisten.
 
 Offline support sebaiknya dikembangkan setelah model transaksi dan sinkronisasi data jelas. Jangan sekadar menyimpan data lokal lalu melakukan overwrite ketika kembali online.
 
-# **13. Acceptance Criteria MVP**
+## 13. Acceptance Criteria MVP
 
 MVP dianggap siap diuji jika skenario berikut berhasil:
 
@@ -808,11 +722,11 @@ MVP dianggap siap diuji jika skenario berikut berhasil:
 
 Semua kalkulasi harus memiliki unit yang jelas dan diuji menggunakan kasus nyata.
 
-# **14. Development Roadmap**
+## 14. Development Roadmap
 
 Saya menyarankan pengembangan bertahap seperti berikut.
 
-## **TernakMatric Development Plan**
+### TernakMatric Development Plan
 
 1. **Phase 1 — Product Discovery**
 
@@ -873,7 +787,7 @@ Saya menyarankan pengembangan bertahap seperti berikut.
 
 Estimasi per fase merupakan perkiraan awal, bukan komitmen jadwal. Beberapa pekerjaan dapat berjalan paralel.
 
-# **15. Hal yang masih harus divalidasi**
+## 15. Hal yang masih harus divalidasi
 
 Ada beberapa keputusan yang belum sebaiknya dikunci sebelum kita membuat database final.
 
@@ -888,7 +802,7 @@ Ada beberapa keputusan yang belum sebaiknya dikunci sebelum kita membuat databas
 | Finance      | Apakah transaksi harus mendukung multi-currency? Belum diperlukan untuk MVP Indonesia. |
 | Offline      | Apakah input mobile harus dapat dilakukan tanpa internet? Perlu divalidasi.            |
 
-# **16. Rekomendasi langkah berikutnya**
+## 16. Rekomendasi langkah berikutnya
 
 Menurut saya, kita sudah punya fondasi yang cukup untuk masuk ke System Design.
 
@@ -896,7 +810,7 @@ Namun saya ingin menghindari kesalahan yang sering terjadi pada aplikasi manajem
 
 Untuk itu, urutan berikut yang saya sarankan:
 
-## **Next milestone: Database & Domain Design**
+### Next milestone: Database & Domain Design
 
 Prioritas berikutnya
 
@@ -911,7 +825,7 @@ Prioritas berikutnya
 7. Seed data spesies per kategori (fish | crustacean | mollusk | poultry | mammal | reptile | insect | other) di `002_ternakmatric_seed.sql`.
 8. Contoh transaksi dan data flow antar-entitas.
 
-## **Satu keputusan arsitektur yang perlu kita pastikan**
+### Satu keputusan arsitektur yang perlu kita pastikan
 
 **TernakMatric — Database Design Decisions**
 

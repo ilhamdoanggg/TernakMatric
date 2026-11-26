@@ -37,7 +37,7 @@ Keterangan tipe `stock_movements`:
 ### 2.2 Survival Rate (SR) & Mortality Rate
 - **Survival Rate**:
   $$SR(\%) = \frac{P_{\text{alive}} + H_{\text{pop}} + T_{\text{out}}}{P_{\text{stocked}}} \times 100 \quad \text{(metode gross, atau } \frac{P_{\text{alive}}}{P_{\text{stocked}} - H_{\text{pop}} - T_{\text{out}}} \times 100 \text{ untuk net)}$$
-  dengan $P_{\text{stocked}} = P_0 + S + B + \text{Pur} + T_{\text{in}}$. Engine mendefinisikan mode eksplisit (`NetExistingStock` vs `CumulativeAccounted`) agar panen parsial tidak terbaca sebagai kematian.
+  dengan $P_{\text{stocked}} = P_0 + S + B + \text{Pur} + T_{\text{in}}$. Engine mendefinisikan mode eksplisit (`NetRemainingStock` vs `CumulativeAccounted`) agar panen parsial tidak terbaca sebagai kematian.
 - **Mortality Rate**:
   $$MR(\%) = \frac{M}{P_{\text{stocked}}} \times 100$$
 

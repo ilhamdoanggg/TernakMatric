@@ -1,10 +1,14 @@
+# note-1 — Product Discovery dan Arah Awal
+
+> Catatan perjalanan desain. Versi terawat: [../docs/01-PROBLEM-DISCOVERY.md](../docs/01-PROBLEM-DISCOVERY.md). Indeks: [../docs/README.md](../docs/README.md).
+
 Pilihan **TernakMatric** sangat cocok. Saya menyarankan kita membangun TernakMatric sebagai sebuah **Animal Production Management Platform** — bukan sekadar kalkulator kapasitas kolam atau kandang, tetapi sistem untuk membantu peternak mengambil keputusan berdasarkan data produksi ternak. Kategori spesies yang didukung: `fish | crustacean | mollusk | poultry | mammal | reptile | insect | other` (ikan adalah salah satu kategori).
 
 Karena kamu memiliki latar belakang Full-Stack Development, kita bisa merancangnya dengan pendekatan software engineering yang terstruktur: mulai dari problem discovery, requirement, domain modeling, database schema, API, hingga implementasi.
 
 **Saran saya: jangan langsung membuat database schema.** Kita perlu memahami masalah dan proses bisnisnya terlebih dahulu supaya database yang dibuat tidak perlu sering dirombak.
 
-# **1. Roadmap pengembangan TernakMatric**
+## 1. Roadmap pengembangan TernakMatric
 
 1. **Problem Discovery**
 
@@ -30,7 +34,7 @@ Karena kamu memiliki latar belakang Full-Stack Development, kita bisa merancangn
 
    Implementasi MVP, pengujian perhitungan, dan validasi dengan pengguna.
 
-# **2. Problem discovery — kumpulkan masalah terlebih dahulu**
+## 2. Problem discovery — kumpulkan masalah terlebih dahulu
 
 Kita perlu mengetahui masalah yang benar-benar dialami peternak.
 
@@ -50,11 +54,10 @@ Berikut daftar awal problem yang bisa kita investigasi.
 
 Ada satu hal penting: TernakMatric sebaiknya membedakan **data aktual, estimasi, dan target**. Misalnya, berat ternak hasil sampling (ikan, ayam, atau sapi) tidak boleh dianggap sebagai berat seluruh populasi yang sudah pasti.
 
-# **3. Tentukan scope MVP (Minimum Viable Product)**
+## 3. Tentukan scope MVP (Minimum Viable Product)
 
 Jangan membangun semua fitur sekaligus. Saya menyarankan TernakMatric memiliki 6 modul inti untuk versi pertama.
 
-[Macroact - Make Robots Active & Smart](https://images.openai.com/static-rsc-4/2N2xGI44EzfPNX3i07KHspXIm0Bqmm9URm-8EEAtdEL1YBFtOvFXqwdZcehdGYf2OwUKmSNNfCV5HuWHjR5HJ9ZivRVTU3xK3kzwHJ2wWdvR4ANcEFdTva5waZjmGw5A4b0QnEMMBt_2o9WSOECM3jpr94J-BHkW-9D5w4AcdZw?purpose=inline)
 
 **1. Farm & Production Unit Management**
 
@@ -107,7 +110,7 @@ Jangan membangun semua fitur sekaligus. Saya menyarankan TernakMatric memiliki 6
 - Pendapatan penjualan daging, telur, susu, fry, atau offspring.
 - Profit/loss per siklus.
 
-# **4. Database schema — rancangan awal**
+## 4. Database schema — rancangan awal
 
 Setelah problem dan fitur ditentukan, kita bisa mulai membuat domain model.
 
@@ -163,7 +166,7 @@ Beberapa keputusan database yang penting:
 - Data output produksi harus menyimpan hasil aktual (daging, telur, susu, fry), bukan hanya hasil estimasi.
 - Perubahan jumlah populasi harus memiliki histori agar bisa diaudit.
 
-## **5. Perhitungan inti yang menjadi keunggulan TernakMatric**
+## 5. Perhitungan inti yang menjadi keunggulan TernakMatric
 
 TernakMatric harus memiliki calculation engine yang konsisten untuk semua spesies, bukan hanya ikan.
 
@@ -181,17 +184,17 @@ TernakMatric harus memiliki calculation engine yang konsisten untuk semua spesie
 
 Catatan: FCR yang benar menggunakan pertambahan biomassa selama periode tertentu, dengan penyesuaian terhadap ternak yang dipanen, mati, atau dicull. Density, feeding rate, weight gain, egg rate, dan milk yield tidak boleh memakai angka universal: sumbernya adalah `species_production_profiles` berversi per spesies dan sistem produksi (lihat ADR 003). Estimasi output juga perlu memperhitungkan survival rate dan sampling terbaru.
 
-# **6. Teknologi yang saya rekomendasikan**
+## 6. Teknologi yang saya rekomendasikan
 
 Untuk arsitektur awal:
 
 | Layer          | Teknologi                                                    |
 | -------------- | ------------------------------------------------------------ |
-| Web            | Next.js + TypeScript                                         |
+| Web            | Vue 3 SSR + TypeScript (Vite)                                         |
 | UI             | Tailwind CSS + Shadcn UI                                     |
 | Mobile         | React Native + Expo + SQLite (offline-first)                 |
 | Backend        | Rust + Axum                                                  |
-| Kontrak API    | Utoipa → `packages/api-contracts/openapi/ternakmatric.v1.yaml` |
+| Kontrak API    | Utoipa → `packages/api-contracts/openapi/ternakmatric.v1.json` |
 | Query layer    | SQLx (bukan SQLC)                                            |
 | Database       | PostgreSQL                                                   |
 | Authentication | JWT / Session                                                |
@@ -200,7 +203,7 @@ Untuk arsitektur awal:
 
 Saya akan memilih modular monolith dahulu, bukan microservices. Calculation Engine, Farm & Production Unit Management, Production Management, Inventory, dan Financial Management bisa dipisahkan sebagai modul tanpa menambah kompleksitas deployment. Batas tenant memakai `organization_id` dengan GUC `app.current_organization_id`.
 
-# **7. Dokumen yang perlu kita buat sebelum coding**
+## 7. Dokumen yang perlu kita buat sebelum coding
 
 Saya menyarankan membuat dokumentasi proyek dengan urutan berikut:
 
@@ -217,11 +220,11 @@ Saya menyarankan membuat dokumentasi proyek dengan urutan berikut:
 
 Dokumentasi ini akan menjadi fondasi pengembangan TernakMatric.
 
-# **8. Kita mulai dari menentukan arah produk**
+## 8. Kita mulai dari menentukan arah produk
 
 Sebelum membuat PRD dan database schema final, ada beberapa keputusan produk yang perlu kita ambil.
 
-## **TernakMatric — Product Discovery**
+### TernakMatric — Product Discovery
 
 Tentukan fondasi produk sebelum masuk ke desain teknis.
 

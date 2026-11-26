@@ -1,8 +1,10 @@
 # 06 — Database ERD & Schema Blueprint: TernakMatric
 
-**Dokumen**: `TM-DOC-06` · **Status**: Baseline v1.0 · **Tanggal**: 2026-11-24
+**Dokumen**: `TM-DOC-06` · **Status**: Baseline v1.0, diselaraskan 2026-11-26 · **Tanggal**: 2026-11-24
 
 Dokumen ini merangkum desain skema fisik PostgreSQL 16+ pada [`data/001_ternakmatric_schema.sql`](../data/001_ternakmatric_schema.sql) beserta perluasan modul `mod-production` (`individual_tags`) dan `mod-health` (`vaccination_schedules`, `biosecurity_logs`) yang diimplementasikan di `backend/migrations/`.
+
+> **Status skema**: `data/` adalah **baseline referensi** untuk nama tabel/kolom; `backend/migrations/` adalah schema yang benar-benar dipasang. Selisih keduanya dan utang teknisnya tercatat di [`../notes/note-4-migration-audit.md`](../notes/note-4-migration-audit.md). Tabel ERD di bawah mencerminkan gabungan keduanya.
 
 ---
 
@@ -90,4 +92,4 @@ erDiagram
 | `2026112409_seed_catalogs.sql` | Data referensi global: `unit_types`, `production_systems`, `species` (8 kategori), `environment_metrics`, `plans`, `expense_categories`, `calculation_versions` (termasuk `SGR` & `HPP_LIVE_WEIGHT`) |
 | `2026112410_audit_actor_columns.sql` | Kolom `created_by`, `updated_at`, `updated_by` seragam + trigger otomatis `current_user_id()` (`SET LOCAL app.current_user_id`) |
 
-Detail kontrak tiap kolom tersedia pada [Schema SQL](../data/001_ternakmatric_schema.sql) dan [Data Dictionary](../data/DATA_DICTIONARY.md).
+Detail kontrak tiap kolom tersedia pada [Schema SQL](../data/001_ternakmatric_schema.sql) dan [Data Dictionary](../data/DATA_DICTIONARY.md). File migrasi bersifat immutable setelah di-apply; perbaikan dibuat sebagai file `2026112411_...` sesuai temuan di `note-4`.

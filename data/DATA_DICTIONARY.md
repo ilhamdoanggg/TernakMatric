@@ -1,83 +1,92 @@
-# TernakMatric Data Dictionary (table inventory)
+# TernakMatric — Kamus Data (Inventaris Tabel)
 
-The SQL migration is the authoritative source for column types and constraints. This document explains table purpose and ownership.
+Sumber kebenaran untuk tipe kolom dan constraint adalah SQL migrasi, bukan dokumen ini. Dokumen ini menjelaskan **tujuan dan kepemilikan** tiap tabel.
 
-## Identity and SaaS
-| Table | Scope | Purpose |
-|---|---|---|
-| `users` | Global | Login identity and profile |
-| `organizations` | Global | Tenant boundary |
-| `organization_members` | Tenant | Membership and invitation status |
-| `roles` | Global/tenant | System or custom role definitions |
-| `permissions` | Global | Permission catalog |
-| `role_permissions` | Global/tenant | Role-to-permission mapping |
-| `member_roles` | Tenant | Roles assigned to organization member |
-| `plans` | Global | SaaS plan definitions and limits |
-| `subscriptions` | Tenant | Organization subscription lifecycle |
+> **Status**: inventaris ini mengikuti baseline [`001_ternakmatric_schema.sql`](001_ternakmatric_schema.sql). Tabel yang hanya ada di migrasi—`individual_tags`, `vaccination_schedules`, `biosecurity_logs`—adalah ekstensi yang tercantum di [`../docs/06-DATABASE-ERD.md`](../docs/06-DATABASE-ERD.md). Untuk status schema terpasang, baca [`README.md`](README.md) dan [`../notes/note-4-migration-audit.md`](../notes/note-4-migration-audit.md).
 
-## Farm, production unit, and species
-| Table | Scope | Purpose |
-|---|---|---|
-| `farms` | Tenant | Physical farm/site |
-| `unit_types` | Global | Generic unit catalog: pond, coop, pen, cage, pasture, hive, etc. |
-| `production_systems` | Global | Generic production system catalog |
-| `production_units` | Tenant | Physical growing/housing unit with capacity and optional dimensions |
-| `species` | Global/tenant | Built-in and custom species with category |
-| `species_production_profiles` | Tenant | Versioned species/system parameters in `parameters jsonb` |
-| `growth_stages` | Tenant | Weight/age bands per production profile |
-| `feeding_guidelines` | Tenant | Feeding recommendations per growth stage |
+## Identitas dan SaaS
 
-## Production
-| Table | Scope | Purpose |
-|---|---|---|
-| `production_batches` | Tenant | One production cycle for any species |
-| `batch_unit_assignments` | Tenant | Time-bounded batch occupancy in production units |
-| `stock_movements` | Tenant | Append-oriented animal population ledger |
-| `population_balances` | Tenant | Transaction-maintained population projection |
-| `mortality_records` | Tenant | Detailed mortality/cull event notes |
-| `growth_samples` | Tenant | Sample count, weight, and optional length |
-| `environment_metrics` | Global | Metric catalog: water, air, soil, housing, feed |
-| `environment_readings` | Tenant | Manual or IoT measurements with explicit unit |
-| `health_records` | Tenant | Observation, suspected disease, and treatment |
-| `feeding_records` | Tenant | Actual feed given to a batch |
+| Tabel | Cakupan | Tujuan |
+| --- | --- | --- |
+| `users` | Global | Identitas login dan profil |
+| `organizations` | Global | Batas tenant |
+| `organization_members` | Tenant | Keanggotaan dan status undangan |
+| `roles` | Global/tenant | Definisi peran sistem atau custom |
+| `permissions` | Global | Katalog izin |
+| `role_permissions` | Global/tenant | Pemetaan peran ke izin |
+| `member_roles` | Tenant | Peran yang diberikan kepada anggota organisasi |
+| `plans` | Global | Definisi dan batas paket langganan |
+| `subscriptions` | Tenant | Siklus hidup langganan organisasi |
+
+## Farm, unit produksi, dan species
+
+| Tabel | Cakupan | Tujuan |
+| --- | --- | --- |
+| `farms` | Tenant | Lokasi/lapangan fisik |
+| `unit_types` | Global | Katalog unit generik: kolam, kandang, cage, pasture, hive, dll. |
+| `production_systems` | Global | Katalog sistem produksi generik |
+| `production_units` | Tenant | Unit fisik pemeliharaan dengan kapasitas dan dimensi opsional |
+| `species` | Global/tenant | Species bawaan dan custom beserta kategori |
+| `species_production_profiles` | Tenant | Parameter berversi per species/sistem pada `parameters jsonb` |
+| `growth_stages` | Tenant | Rentang berat/umur per profil produksi |
+| `feeding_guidelines` | Tenant | Rekomendasi pakan per tahap pertumbuhan |
+
+## Produksi
+
+| Tabel | Cakupan | Tujuan |
+| --- | --- | --- |
+| `production_batches` | Tenant | Satu siklus produksi untuk species apa pun |
+| `batch_unit_assignments` | Tenant | Okupansi batch di unit produksi dalam rentang waktu tertentu |
+| `stock_movements` | Tenant | Ledger populasi ternak bersifat append-only |
+| `population_balances` | Tenant | Proyeksi populasi yang dipelihara dalam transaksi |
+| `mortality_records` | Tenant | Catatan detail kematian/cull |
+| `growth_samples` | Tenant | Sampel jumlah, berat, dan panjang opsional |
+| `environment_metrics` | Global | Katalog metrik: air, udara, tanah, kandang, pakan |
+| `environment_readings` | Tenant | Pengukuran manual/IoT dengan satuan eksplisit |
+| `health_records` | Tenant | Observasi, dugaan penyakit, dan perawatan |
+| `feeding_records` | Tenant | Pakan aktual yang diberikan ke batch |
 
 ## Inventory
-| Table | Scope | Purpose |
-|---|---|---|
-| `warehouses` | Tenant | Feed/storage locations |
-| `feed_products` | Tenant | Feed SKU and product attributes |
-| `feed_unit_conversions` | Tenant | Conversion factors to canonical units |
-| `inventory_transactions` | Tenant | Receipt, issue, transfer, adjustment header |
-| `inventory_transaction_lines` | Tenant | Product quantities, units, costs, lots, batch reference |
-| `inventory_balances` | Tenant | Transaction-maintained inventory projection |
 
-## Output and finance
-| Table | Scope | Purpose |
-|---|---|---|
-| `production_outputs` | Tenant | Meat, egg, milk, fry, cull, offspring, and other outputs |
-| `expense_categories` | Global/tenant | Expense category catalog |
-| `expenses` | Tenant | Cost entries |
-| `sales` | Tenant | Sale header |
-| `sale_items` | Tenant | Sold output quantities, units, and prices |
-| `calculation_versions` | Global | Formula version and definition |
-| `calculation_runs` | Tenant | Input/result snapshots for reproducibility |
-| `audit_logs` | Global/tenant | Actor, action, entity, and before/after snapshots |
+| Tabel | Cakupan | Tujuan |
+| --- | --- | --- |
+| `warehouses` | Tenant | Lokasi gudang/penyimpanan |
+| `feed_products` | Tenant | SKU pakan dan atribut produk |
+| `feed_unit_conversions` | Tenant | Faktor konversi ke satuan kanonik |
+| `inventory_transactions` | Tenant | Header transaksi masuk, keluar, transfer, dan penyesuaian |
+| `inventory_transaction_lines` | Tenant | Kuantitas, satuan, biaya, lot, dan referensi batch |
+| `inventory_balances` | Tenant | Proyeksi saldo inventory yang dipelihara dalam transaksi |
 
-## Offline synchronization
-| Table | Scope | Purpose |
-|---|---|---|
-| `devices` | Tenant | Registered web/mobile device |
-| `sync_operations` | Tenant | Idempotent client mutation queue and processing result |
-| `sync_conflicts` | Tenant | Stale-write conflicts and resolution history |
-| `outbox_events` | Tenant | Change feed for reliable sync responses and notifications |
+## Output dan keuangan
 
-## Important field semantics
-- Quantities carry explicit units: `quantity`, `unit`, `capacity_value`, `capacity_unit`, `metric_value`, `unit`.
-- Species-specific husbandry values belong in `species_production_profiles.parameters`, not in generic columns.
-- Store event times as `timestamptz`; store business dates such as `start_date` as `date`.
-- `organization_id` is a security boundary, not merely a reporting column.
-- `base_version` in sync operations is the entity version last observed by the client; the server must compare it with the current server version.
-- `client_operation_id` must be generated on the device and remain stable across retries.
-- `input_snapshot` and `result_snapshot` preserve the exact inputs and outputs of a calculation.
-- Inventory, population, and output ledgers are corrected by reversal/adjustment events, never destructive edits.
-- `client_wins` conflict resolution is forbidden for stock, inventory, output, and finance entities.
+| Tabel | Cakupan | Tujuan |
+| --- | --- | --- |
+| `production_outputs` | Tenant | Daging, telur, susu, fry, cull, offspring, dan output lainnya |
+| `expense_categories` | Global/tenant | Katalog kategori biaya |
+| `expenses` | Tenant | Catatan biaya |
+| `sales` | Tenant | Header penjualan |
+| `sale_items` | Tenant | Kuantitas, satuan, dan harga output yang terjual |
+| `calculation_versions` | Global | Versi dan definisi rumus |
+| `calculation_runs` | Tenant | Snapshot input/hasil untuk reproduktibilitas |
+| `audit_logs` | Global/tenant | Aktor, aksi, entitas, dan snapshot sebelum/sesudah |
+
+## Sinkronisasi offline
+
+| Tabel | Cakupan | Tujuan |
+| --- | --- | --- |
+| `devices` | Tenant | Perangkat web/mobile yang terdaftar |
+| `sync_operations` | Tenant | Antrean mutasi klien yang idempoten dan hasil pemrosesannya |
+| `sync_conflicts` | Tenant | Konflik update usang dan riwayat resolusinya |
+| `outbox_events` | Tenant | Change feed untuk respons sinkronisasi dan notifikasi |
+
+## Semantik kolom penting
+
+- Kuantitas selalu membawa satuan eksplisit: `quantity`, `unit`, `capacity_value`, `capacity_unit`, `metric_value`, `unit`.
+- Nilai husbandry spesifik species berada di `species_production_profiles.parameters`, bukan di kolom generik.
+- Waktu kejadian memakai `timestamptz`; tanggal bisnis seperti `start_date` memakai `date`.
+- `organization_id` adalah batas keamanan, bukan sekadar kolom pelaporan.
+- `base_version` pada operasi sinkronisasi adalah versi entitas terakhir yang dilihat klien; server wajib membandingkannya dengan versi server saat ini.
+- `client_operation_id` dibuat di perangkat dan tetap sama saat retry.
+- `input_snapshot` dan `result_snapshot` menyimpan input dan output kalkulasi secara persis.
+- Ledger inventory, populasi, dan output dikoreksi dengan event reversal/adjustment, bukan `UPDATE`/`DELETE` destruktif.
+- Resolusi konflik `client_wins` dilarang untuk entitas stok, inventory, output, dan keuangan.
