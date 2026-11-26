@@ -8,6 +8,9 @@
     "build": "vue-tsc --noEmit && npm run build:client && npm run build:server",
     "build:client": "vite build --ssrManifest --outDir dist/client",
     "build:server": "vite build --ssr src/entry-server.ts --outDir dist/server",
+    "build:staging": "vue-tsc --noEmit && npm run build:client:staging && npm run build:server:staging",
+    "build:client:staging": "vite build --mode staging --ssrManifest --outDir dist/client",
+    "build:server:staging": "vite build --mode staging --ssr src/entry-server.ts --outDir dist/server",
     "preview": "NODE_ENV=production node server.mjs",
     "typecheck": "vue-tsc --noEmit"
   },

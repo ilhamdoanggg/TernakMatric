@@ -7,6 +7,10 @@ CREATE TABLE expense_categories (
   code varchar(60) NOT NULL,
   name varchar(120) NOT NULL,
   is_system boolean NOT NULL DEFAULT false,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  created_by uuid REFERENCES users(id),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  updated_by uuid REFERENCES users(id),
   UNIQUE NULLS NOT DISTINCT (organization_id, code),
   UNIQUE (id, organization_id),
   CHECK ((is_system AND organization_id IS NULL) OR (NOT is_system AND organization_id IS NOT NULL))
@@ -29,9 +33,14 @@ CREATE TABLE expenses (
   version integer NOT NULL DEFAULT 1 CHECK (version > 0),
   created_by uuid REFERENCES users(id),
   created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  updated_by uuid REFERENCES users(id),
   FOREIGN KEY (batch_id, organization_id) REFERENCES production_batches(id, organization_id),
   FOREIGN KEY (farm_id, organization_id) REFERENCES farms(id, organization_id)
 );
+
+CREATE INDEX idx_expenses_batch_date
+  ON expenses(organization_id, batch_id, expense_date DESC);
 
 CREATE TABLE sales (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -42,10 +51,16 @@ CREATE TABLE sales (
   currency char(3) NOT NULL DEFAULT 'IDR',
   notes text,
   version integer NOT NULL DEFAULT 1 CHECK (version > 0),
+  created_by uuid REFERENCES users(id),
   created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  updated_by uuid REFERENCES users(id),
   FOREIGN KEY (batch_id, organization_id) REFERENCES production_batches(id, organization_id),
   UNIQUE (id, organization_id)
 );
+
+CREATE INDEX idx_sales_batch_date
+  ON sales(organization_id, batch_id, sale_date DESC);
 
 CREATE TABLE sale_items (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -57,10 +72,19 @@ CREATE TABLE sale_items (
   unit text NOT NULL DEFAULT 'kg' CHECK (unit IN ('head','kg','g','egg','liter','tray','crate','other')),
   unit_price numeric(16,2) NOT NULL CHECK (unit_price >= 0),
   line_total numeric(16,2) NOT NULL CHECK (line_total >= 0),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  created_by uuid REFERENCES users(id),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  updated_by uuid REFERENCES users(id),
   FOREIGN KEY (sale_id, organization_id) REFERENCES sales(id, organization_id),
   FOREIGN KEY (production_output_id, organization_id)
     REFERENCES production_outputs(id, organization_id)
 );
+
+CREATE INDEX idx_sale_items_org_sale
+  ON sale_items(organization_id, sale_id);
+CREATE INDEX idx_sale_items_org_output
+  ON sale_items(organization_id, production_output_id);
 
 CREATE TABLE calculation_versions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -83,7 +107,8 @@ CREATE TABLE calculation_runs (
   calculation_version_id uuid NOT NULL REFERENCES calculation_versions(id),
   calculation_type text NOT NULL CHECK (calculation_type IN (
     'capacity','biomass','population','survival_rate','mortality_rate','fcr',
-    'weight_gain','sgr','egg_rate','milk_yield','harvest_forecast','hpp','profitability'
+    'feeding_variance','weight_gain','abw','sgr','egg_rate','milk_yield',
+    'harvest_forecast','hpp','profitability'
   )),
   formula_version integer NOT NULL CHECK (formula_version > 0),
   parameter_version integer CHECK (parameter_version > 0),
@@ -92,6 +117,7 @@ CREATE TABLE calculation_runs (
   assumptions jsonb NOT NULL DEFAULT '{}'::jsonb,
   sample_at timestamptz,
   calculated_at timestamptz NOT NULL DEFAULT now(),
+  created_by uuid REFERENCES users(id),
   FOREIGN KEY (batch_id, organization_id) REFERENCES production_batches(id, organization_id),
   FOREIGN KEY (unit_id, organization_id) REFERENCES production_units(id, organization_id),
   CHECK ((batch_id IS NULL) <> (unit_id IS NULL))
@@ -99,7 +125,7 @@ CREATE TABLE calculation_runs (
 
 CREATE TABLE audit_logs (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  organization_id uuid REFERENCES organizations(id),
+  organization_id uuid NOT NULL REFERENCES organizations(id),
   actor_user_id uuid REFERENCES users(id),
   action varchar(100) NOT NULL,
   entity_type varchar(100) NOT NULL,

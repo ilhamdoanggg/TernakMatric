@@ -9,11 +9,13 @@ use uuid::Uuid;
 
 pub const LEDGER_AND_FINANCE_ENTITIES: &[&str] = &[
     "stock_movements",
+    "population_balances",
     "inventory_transactions",
     "inventory_transaction_lines",
+    "inventory_balances",
+    "production_outputs",
     "expenses",
     "sales",
-    "production_outputs",
     "feeding_records",
     "mortality_records",
 ];
@@ -245,7 +247,11 @@ impl SyncService {
             } else {
                 SyncStatus::Applied
             };
-            let status_str = if is_stale_conflict { "conflict" } else { "applied" };
+            let status_str = if is_stale_conflict {
+                "conflict"
+            } else {
+                "applied"
+            };
 
             let sync_op_id: Uuid = sqlx::query_scalar(
                 r#"

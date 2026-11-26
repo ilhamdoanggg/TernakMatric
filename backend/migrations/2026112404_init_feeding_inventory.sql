@@ -8,6 +8,9 @@ CREATE TABLE warehouses (
   code varchar(60) NOT NULL,
   name varchar(140) NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now(),
+  created_by uuid REFERENCES users(id),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  updated_by uuid REFERENCES users(id),
   UNIQUE (organization_id, code),
   UNIQUE (id, organization_id),
   FOREIGN KEY (farm_id, organization_id) REFERENCES farms(id, organization_id)
@@ -19,11 +22,14 @@ CREATE TABLE feed_products (
   sku varchar(80) NOT NULL,
   name varchar(180) NOT NULL,
   brand varchar(120),
-  pellet_size_mm numeric(7,3),
+  pellet_size_mm numeric(7,3) CHECK (pellet_size_mm IS NULL OR pellet_size_mm > 0),
   protein_percent numeric(5,2),
   default_unit text NOT NULL DEFAULT 'kg' CHECK (default_unit IN ('kg','g','bag','unit','liter')),
   is_active boolean NOT NULL DEFAULT true,
   created_at timestamptz NOT NULL DEFAULT now(),
+  created_by uuid REFERENCES users(id),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  updated_by uuid REFERENCES users(id),
   UNIQUE (organization_id, sku),
   UNIQUE (id, organization_id),
   CHECK (protein_percent IS NULL OR protein_percent BETWEEN 0 AND 100)
@@ -32,13 +38,22 @@ CREATE TABLE feed_products (
 CREATE TABLE feed_unit_conversions (
   organization_id uuid NOT NULL REFERENCES organizations(id),
   feed_product_id uuid NOT NULL,
-  from_unit text NOT NULL,
-  to_unit text NOT NULL,
+  from_unit text NOT NULL CHECK (from_unit IN ('kg','g','bag','unit','liter')),
+  to_unit text NOT NULL CHECK (to_unit IN ('kg','g','bag','unit','liter')),
   factor numeric(18,6) NOT NULL CHECK (factor > 0),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  created_by uuid REFERENCES users(id),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  updated_by uuid REFERENCES users(id),
   PRIMARY KEY (feed_product_id, from_unit, to_unit),
-  FOREIGN KEY (feed_product_id, organization_id) REFERENCES feed_products(id, organization_id)
+  FOREIGN KEY (feed_product_id, organization_id) REFERENCES feed_products(id, organization_id),
+  CHECK (from_unit <> to_unit)
 );
 
+CREATE INDEX idx_feed_unit_conversions_org_lookup
+  ON feed_unit_conversions(organization_id, feed_product_id, from_unit, to_unit);
+
+-- Header allows draft -> posted/voided transitions; posted/voided headers and all lines are append-only.
 CREATE TABLE inventory_transactions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   organization_id uuid NOT NULL REFERENCES organizations(id),
@@ -52,10 +67,12 @@ CREATE TABLE inventory_transactions (
   idempotency_key uuid NOT NULL,
   created_by uuid REFERENCES users(id),
   created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  updated_by uuid REFERENCES users(id),
   UNIQUE (organization_id, idempotency_key),
   UNIQUE (id, organization_id),
   FOREIGN KEY (warehouse_id, organization_id) REFERENCES warehouses(id, organization_id),
-  FOREIGN KEY (reversal_of) REFERENCES inventory_transactions(id),
+  FOREIGN KEY (reversal_of, organization_id) REFERENCES inventory_transactions(id, organization_id),
   CHECK (reversal_of IS NULL OR reversal_of <> id)
 );
 
@@ -71,6 +88,7 @@ CREATE TABLE inventory_transaction_lines (
   expiry_date date,
   destination_warehouse_id uuid,
   batch_id uuid,
+  created_by uuid REFERENCES users(id),
   created_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE (id, organization_id),
   FOREIGN KEY (transaction_id, organization_id) REFERENCES inventory_transactions(id, organization_id),
@@ -79,6 +97,7 @@ CREATE TABLE inventory_transaction_lines (
   FOREIGN KEY (batch_id, organization_id) REFERENCES production_batches(id, organization_id)
 );
 
+-- Transaction-maintained inventory projection. lot_code uses sentinel 'DEFAULT' when omitted.
 CREATE TABLE inventory_balances (
   organization_id uuid NOT NULL REFERENCES organizations(id),
   warehouse_id uuid NOT NULL,
@@ -87,12 +106,14 @@ CREATE TABLE inventory_balances (
   quantity numeric(14,3) NOT NULL DEFAULT 0 CHECK (quantity >= 0),
   version integer NOT NULL DEFAULT 1 CHECK (version > 0),
   updated_at timestamptz NOT NULL DEFAULT now(),
+  updated_by uuid REFERENCES users(id),
   PRIMARY KEY (organization_id, warehouse_id, feed_product_id, lot_code),
   FOREIGN KEY (warehouse_id, organization_id) REFERENCES warehouses(id, organization_id),
   FOREIGN KEY (feed_product_id, organization_id) REFERENCES feed_products(id, organization_id)
 );
 
 CREATE INDEX idx_inventory_lines_product ON inventory_transaction_lines(organization_id, feed_product_id);
+CREATE INDEX idx_inventory_lines_org_tx ON inventory_transaction_lines(organization_id, transaction_id);
 CREATE INDEX idx_inventory_tx_time ON inventory_transactions(organization_id, occurred_at);
 
 CREATE TABLE feeding_records (
@@ -113,6 +134,8 @@ CREATE TABLE feeding_records (
   idempotency_key uuid NOT NULL,
   created_by uuid REFERENCES users(id),
   created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  updated_by uuid REFERENCES users(id),
   UNIQUE (organization_id, idempotency_key),
   UNIQUE (organization_id, inventory_line_id),
   FOREIGN KEY (batch_id, organization_id) REFERENCES production_batches(id, organization_id),

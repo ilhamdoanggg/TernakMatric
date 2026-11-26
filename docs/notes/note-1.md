@@ -1,6 +1,6 @@
 # note-1 — Product Discovery dan Arah Awal
 
-> Catatan perjalanan desain. Versi terawat: [../docs/01-PROBLEM-DISCOVERY.md](../docs/01-PROBLEM-DISCOVERY.md). Indeks: [../docs/README.md](../docs/README.md).
+> Catatan perjalanan desain. Versi terawat: [../01-PROBLEM-DISCOVERY.md](../01-PROBLEM-DISCOVERY.md). Indeks: [../README.md](../README.md).
 
 Pilihan **TernakMatric** sangat cocok. Saya menyarankan kita membangun TernakMatric sebagai sebuah **Animal Production Management Platform** — bukan sekadar kalkulator kapasitas kolam atau kandang, tetapi sistem untuk membantu peternak mengambil keputusan berdasarkan data produksi ternak. Kategori spesies yang didukung: `fish | crustacean | mollusk | poultry | mammal | reptile | insect | other` (ikan adalah salah satu kategori).
 

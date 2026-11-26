@@ -75,7 +75,11 @@ pub async fn list_enclosures<S: AppBackendState>(
     State(state): State<S>,
     auth: AuthPrincipal,
 ) -> Result<Json<Vec<EnclosureDto>>, ApiError> {
-    let mut tx = auth.context().begin_tx(state.pool()).await.map_err(ApiError)?;
+    let mut tx = auth
+        .context()
+        .begin_tx(state.pool())
+        .await
+        .map_err(ApiError)?;
     let rows: Vec<EnclosureDto> = sqlx::query_as(
         r#"
         SELECT id, organization_id, farm_id, code, name, unit_type_id, production_system_id,
@@ -125,7 +129,11 @@ pub async fn create_enclosure<S: AppBackendState>(
         )
     };
 
-    let mut tx = auth.context().begin_tx(state.pool()).await.map_err(ApiError)?;
+    let mut tx = auth
+        .context()
+        .begin_tx(state.pool())
+        .await
+        .map_err(ApiError)?;
     let row: EnclosureDto = sqlx::query_as(
         r#"
         INSERT INTO production_units (
@@ -156,7 +164,7 @@ pub async fn create_enclosure<S: AppBackendState>(
 
     AuditLogger::record(
         &mut tx,
-        Some(auth.organization_id),
+        auth.organization_id,
         Some(auth.user_id),
         "enclosure.created",
         "production_units",
@@ -183,7 +191,11 @@ pub async fn get_enclosure<S: AppBackendState>(
     auth: AuthPrincipal,
     Path(id): Path<Uuid>,
 ) -> Result<Json<EnclosureDto>, ApiError> {
-    let mut tx = auth.context().begin_tx(state.pool()).await.map_err(ApiError)?;
+    let mut tx = auth
+        .context()
+        .begin_tx(state.pool())
+        .await
+        .map_err(ApiError)?;
     let row: EnclosureDto = sqlx::query_as(
         r#"
         SELECT id, organization_id, farm_id, code, name, unit_type_id, production_system_id,
@@ -217,7 +229,11 @@ pub async fn update_enclosure<S: AppBackendState>(
     Json(req): Json<UpdateEnclosureRequest>,
 ) -> Result<Json<EnclosureDto>, ApiError> {
     auth.require(Permission::FarmManage).map_err(ApiError)?;
-    let mut tx = auth.context().begin_tx(state.pool()).await.map_err(ApiError)?;
+    let mut tx = auth
+        .context()
+        .begin_tx(state.pool())
+        .await
+        .map_err(ApiError)?;
 
     let before: EnclosureDto = sqlx::query_as(
         r#"
@@ -261,7 +277,7 @@ pub async fn update_enclosure<S: AppBackendState>(
 
     AuditLogger::record(
         &mut tx,
-        Some(auth.organization_id),
+        auth.organization_id,
         Some(auth.user_id),
         "enclosure.updated",
         "production_units",
@@ -290,7 +306,11 @@ pub async fn calculate_capacity<S: AppBackendState>(
     Path(id): Path<Uuid>,
     Json(req): Json<CalculateCapacityRequest>,
 ) -> Result<Json<CalculationResult<CapacityEvaluation>>, ApiError> {
-    let mut tx = auth.context().begin_tx(state.pool()).await.map_err(ApiError)?;
+    let mut tx = auth
+        .context()
+        .begin_tx(state.pool())
+        .await
+        .map_err(ApiError)?;
     let cap_val: Option<Decimal> = sqlx::query_scalar(
         "SELECT capacity_value FROM production_units WHERE organization_id = $1 AND id = $2 FOR UPDATE",
     )

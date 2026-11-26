@@ -8,15 +8,15 @@ Kamu adalah coding agent di repository ini. Baca aturan ini sebelum mengubah kod
 
 | Area | Sumber kanonik |
 | --- | --- |
-| Produk, requirement, aturan bisnis | `docs/01-*` s.d. `docs/12-*`, `docs/decisions/001-003`, `notes/note-1..3` |
-| Nama tabel/kolom/schema | `data/001_ternakmatric_schema.sql`, `data/DATA_DICTIONARY.md`, `docs/06-DATABASE-ERD.md` |
-| Schema yang benar-benar terpasang | `backend/migrations/` |
-| Utang teknis migrasi | `notes/note-4-migration-audit.md` |
+| Produk, requirement, aturan bisnis | `docs/01-*` s.d. `docs/12-*`, `docs/decisions/001-003`, `docs/notes/note-1..3` |
+| Nama tabel/kolom/schema | `backend/migrations/`, `docs/data/DATA_DICTIONARY.md`, `docs/06-DATABASE-ERD.md` |
+| Schema yang benar-benar terpasang | `backend/migrations/` (`2026112401`–`2026112409`) |
+| Utang teknis migrasi | `docs/notes/note-4-migration-audit.md` |
 | Arsitektur & batas crate | `docs/07-SYSTEM-ARCHITECTURE.md`, `docs/09-REPOSITORY-STRUCTURE.md` |
 | Kontrak API | Anotasi Utoipa di handler Rust → `packages/api-contracts/openapi/ternakmatric.v1.json` → `generated/typescript/schema.d.ts` → client `packages/api-contracts/src/index.ts` |
 | Stack & pola web | `apps/web/` (Vue 3 SSR + TypeScript) dan `packages/api-contracts/README.md` |
 
-Jangan mengarang nama tabel/kolom/satuan. Gunakan nama kanonik dari `data/` dan migrasi yang sudah ada.
+Jangan mengarang nama tabel/kolom/satuan. Gunakan nama kanonik dari `docs/data/` dan migrasi di `backend/migrations/`.
 
 Bahasa dokumentasi dan catatan: **Indonesia**. Identifier kode, nama file, dan pesan error stabil: **Inggris**.
 
@@ -26,7 +26,7 @@ Bahasa dokumentasi dan catatan: **Indonesia**. Identifier kode, nama file, dan p
 
 ```text
 backend/
-  migrations/              # SQLx/Postgres migrations, terbaru 2026112410
+  migrations/              # SQLx/Postgres migrations (tergabung lengkap 2026112401–2026112409)
   crates/
     shared-kernel/         # tipe domain murni, AppError, ID newtype
     mod-calculation/       # engine kalkulasi murni, tanpa DB/HTTP/clock
@@ -35,7 +35,7 @@ backend/
     mod-tenant|enclosure|species|production|feeding|environment|health|finance
   bins/api-server/         # router Axum + ApiDoc + AppState
   bins/worker/             # snapshot harian, reminder vaksin, alert
-data/                      # baseline schema + seed + dictionary + ERD
+docs/                      # seluruh produk, arsitektur, decisions, data/ (dictionary/ERD), & notes/
 deploy/db/                 # runner migrasi + provisioning role aplikasi
 packages/api-contracts/    # OpenAPI generated + client/tipe TypeScript
 apps/web/                  # dashboard Vue 3 SSR + TypeScript (Vite 6, Tailwind)
@@ -77,8 +77,8 @@ apps/mobile/               # mobile offline-first (belum fokus utama)
 
 7. **Migrasi yang sudah di-apply bersifat immutable.**
    - Jangan mengedit file migrasi lama. Tambah file baru dengan nomor berikutnya.
-   - Migration terbaru saat ini: `2026112410_audit_actor_columns.sql`; berikutnya `2026112411_...`.
-   - Sebelum menyentuh migrasi, baca `notes/note-4-migration-audit.md`.
+   - Migration terbaru saat ini: `2026112409_rls_triggers_hardening.sql`; berikutnya `2026112410_...`.
+   - Sebelum menyentuh migrasi, baca `docs/notes/note-4-migration-audit.md`.
 
 8. **Role aplikasi bukan superuser dan tidak punya `BYPASSRLS`.**
    - `deploy/db/init-app-role.sql` mengatur `NOSUPERUSER NOBYPASSRLS`.
@@ -239,7 +239,7 @@ lalu commit `.sqlx/` dan pastikan CI menjalankan `sqlx prepare --check`.
 
 ## 8. Migrasi database
 
-Format nama: `YYYYMMDDNN_snake_case.sql`, contoh `2026112411_fix_rls_rbac_hardening.sql`.
+Format nama: `YYYYMMDDNN_snake_case.sql`, contoh `2026112409_rls_triggers_hardening.sql`.
 
 Untuk tabel tenant baru, sertakan:
 
@@ -251,11 +251,11 @@ Untuk tabel tenant baru, sertakan:
 - audit columns `created_at`, `updated_at`, `created_by`, `updated_by` + trigger audit
 - index dengan prefix `organization_id` untuk query path umum
 
-Referensi global-or-tenant memakai pola trigger `assert_global_or_tenant_ref` dari `2026112408`.
+Referensi global-or-tenant memakai pola trigger `assert_global_or_tenant_ref` dari `2026112401` dan `2026112409_rls_triggers_hardening.sql`.
 
 Ledger bersifat append-only: `stock_movements`, `inventory_transaction_lines`, `audit_logs` (dan sesuai ADR 002 juga `inventory_transactions`, `production_outputs`). Koreksi memakai reversal/adjustment, bukan `UPDATE`/`DELETE`.
 
-Seed global `organization_id IS NULL` tidak boleh bergantung pada `BYPASSRLS`. Perhatikan urutan seed vs hardening; lihat `notes/note-4-migration-audit.md`.
+Seed global `organization_id IS NULL` tidak boleh bergantung pada `BYPASSRLS` (`2026112408_seed_catalogs.sql` dijalankan sebelum `2026112409_rls_triggers_hardening.sql`); lihat `docs/notes/note-4-migration-audit.md`.
 
 Ada dua jalur migrasi yang masih coexistence:
 
@@ -369,4 +369,4 @@ Sebelum mengatakan selesai:
 - [ ] Untuk perubahan `apps/web`: `npm --prefix apps/web run typecheck` dan `npm --prefix apps/web run build` hijau
 - [ ] Untuk route/halaman web baru: render SSR berhasil dan tidak ada akses `window`/`document`/`localStorage` tanpa guard `import.meta.env.SSR`
 - [ ] Tidak ada mock data baru untuk fitur yang sudah memiliki endpoint API
-- [ ] Dokumentasi terkait (`docs/`, `data/`, atau `notes/`) diselaraskan bila nama/semantik berubah
+- [ ] Dokumentasi terkait (`docs/`, termasuk `docs/data/` & `docs/notes/`) diselaraskan bila nama/semantik berubah

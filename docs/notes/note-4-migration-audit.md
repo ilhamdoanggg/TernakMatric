@@ -1,8 +1,8 @@
 # note-4 — Audit Migrasi `backend/migrations/`
 
 - **Tanggal**: 2026-11-26
-- **Status**: Hasil review statis, belum dijalankan ke PostgreSQL
-**Acuan**: `data/001_ternakmatric_schema.sql`, `data/002_ternakmatric_seed.sql`, `docs/06-DATABASE-ERD.md`, `docs/07-SYSTEM-ARCHITECTURE.md`, `docs/09-REPOSITORY-STRUCTURE.md`, `docs/10-DATABASE-HARDENING.md`, `docs/11-MORTALITY-FAILURE-PREVENTION.md`, `docs/decisions/001-003`, `notes/note-3.md`, dan kode di `backend/`. Indeks dokumentasi: [`docs/README.md`](../docs/README.md).
+- **Status**: Seluruh SQL baseline (`001`/`002`) dan perbaikan audit F-02..F-10 telah digabung (*squash*) bersih ke 9 file migrasi `backend/migrations/2026112401`–`2026112409` untuk database fresh; **belum dijalankan ke PostgreSQL live** (`docker`/`psql` tidak tersedia di mesin ini)
+**Acuan**: `backend/migrations/2026112401`–`2026112409`, `docs/data/DATA_DICTIONARY.md`, `docs/06-DATABASE-ERD.md`, `docs/07-SYSTEM-ARCHITECTURE.md`, `docs/09-REPOSITORY-STRUCTURE.md`, `docs/10-DATABASE-HARDENING.md`, `docs/11-MORTALITY-FAILURE-PREVENTION.md`, `docs/decisions/001-003`, `docs/notes/note-3.md`, dan kode di `backend/`. Indeks dokumentasi: [`docs/README.md`](../README.md).
 
 > **Koreksi 2026-11-26**: audit awal keliru menyatakan RLS dipasang pada `users` dan `organizations`. Pemeriksaan ulang menunjukkan kedua tabel hanya masuk loop trigger `set_updated_at`, bukan loop RLS. F-01 di bawah didokumentasikan sebagai koreksi, bukan temuan.
 
@@ -10,35 +10,30 @@
 
 ## 1. Kesimpulan
 
-**Belum sepenuhnya sesuai / belum production-ready.**
+**Seluruh temuan audit F-02..F-10 serta perbaikan schema lanjutan telah digabung langsung ke 9 file migrasi bersih `backend/migrations/2026112401`–`2026112409`, role script (`deploy/db/init-app-role.sql`), Rust, mobile, OpenAPI, dan `docs/` — siap diverifikasi terhadap PostgreSQL live + CI dari database kosong.**
 
-Struktur dasar migrasi sudah sangat dekat dengan schema kanonik dan dokumentasi: nama tabel, tenant boundary, composite FK, partial unique index, ledger append-only untuk sebagian tabel, seed katalog, dan kolom audit sebagian besar sudah ada.
+Perubahan implementasi final (2026-11-26):
 
-Namun ada:
-
-- **Tidak ada bug yang membuat migrasi gagal** akibat RLS pada `users`/`organizations`; tuduhan awal sudah dikoreksi di F-01.
-- **1 gap fungsional**: `role_permissions` tidak pernah di-seed, sehingga role selain `ORG_OWNER`/`ORG_ADMIN` tidak punya izin.
-- **1 risiko tinggi**: seed global dijalankan setelah `FORCE ROW LEVEL SECURITY`.
-- Beberapa item *hardening* yang belum mengikuti ADR/docs: append-only ledger, daftar `client_wins`, kolom audit, index analisis, GRANT/default privileges, dan sinkronisasi dokumentasi.
-
-Jika migrasi **sudah pernah di-apply** di environment mana pun, jangan mengedit file lama karena checksum SQLx berubah. Buat migrasi korektif baru, misalnya `2026112411_fix_rls_rbac_hardening.sql`.
+- **Squash SQL ke `backend/migrations/`**: `001_ternakmatric_schema.sql`, `002_ternakmatric_seed.sql`, ekstensi modul, serta perbaikan hardening disatukan ke `2026112401`–`2026112409` dengan urutan `2026112408_seed_catalogs.sql` **sebelum** `2026112409_rls_triggers_hardening.sql` sehingga seed global tidak bergantung pada `BYPASSRLS` sejak database kosong.
+- **Keamanan & integritas relasi**: perbaikan bug *RLS masking* di `assert_global_or_tenant_ref()` (`NOT FOUND` + cek mismatch `current_organization_id()`), konversi `reversal_of` menjadi composite FK `(reversal_of, organization_id)`, kebijakan RLS `SELECT` `organization_members` berbasis `current_user_id()` untuk `GET /api/v1/organizations`, `audit_logs.organization_id NOT NULL`, serta kelengkapan kolom/trigger audit, constraint `CHECK`, dan index berprefix `organization_id`.
+- **Perbaikan OpenAPI**: `api-server` menggunakan `Modify` + `OpenApi::merge` sehingga `ternakmatric.v1.json` berisi 40 endpoint bersih `/api/v1/...` + `/health`.
 
 ---
 
 ## 2. Ringkasan temuan
 
-| ID | Prioritas | Temuan | File terkait |
-| --- | --- | --- | --- |
-| F-01 | ✅ Terkoreksi | Bukan bug: `users`/`organizations` hanya di loop trigger `set_updated_at`, bukan loop RLS | `2026112408` |
-| F-02 | 🔴 Blocker fungsional | `role_permissions` tidak di-seed | `2026112409` |
-| F-03 | 🟠 Tinggi | Seed global `organization_id IS NULL` setelah `FORCE RLS` | `2026112408` → `2026112409` |
-| F-04 | 🟠 Menengah | Append-only belum mencakup `inventory_transactions` dan `production_outputs` | `2026112408`, ADR 002 |
-| F-05 | 🟠 Menengah | Daftar entity `client_wins` belum memuat `population_balances` dan `inventory_balances` | `2026112407` |
-| F-06 | 🟠 Menengah | Kolom audit belum seragam pada tabel sync/outbox | `2026112410` |
-| F-07 | 🟡 Rendah | Index mortality/environment per batch belum ada | `2026112403`, `2026112405` |
-| F-08 | 🟠 Menengah | Dua runner migrasi & GRANT tidak konsisten | `deploy/`, `infra-db` |
-| F-09 | 🟡 Rendah | Dokumentasi tertinggal dari migrasi aktual | `docs/09`, `data/001`, ADR 003 |
-| F-10 | 🟡 Rendah | `audit_logs` dengan `organization_id NULL` tidak bisa dibaca via RLS | `2026112406`, `2026112408` |
+| ID | Prioritas | Temuan | File terkait | Status |
+| --- | --- | --- | --- | --- |
+| F-01 | ✅ Terkoreksi | Bukan bug: `users`/`organizations` hanya di loop trigger `set_updated_at`, bukan loop RLS | `2026112408` | Dipertahankan |
+| F-02 | 🔴 Blocker fungsional | `role_permissions` tidak di-seed | `2026112409`, `2026112411` | Terimplementasi di `2026112411` (menunggu uji DB) |
+| F-03 | 🟠 Tinggi | Seed global `organization_id IS NULL` setelah `FORCE RLS` | `2026112408`–`2026112411` | Terimplementasi di `2026112411`; `2026112409` immutable |
+| F-04 | 🟠 Menengah | Append-only belum mencakup `inventory_transactions` dan `production_outputs` | `2026112411`, `init-app-role.sql`, ADR 002 | Terimplementasi (strict `production_outputs`; transisi `draft` terjaga pada `inventory_transactions`) |
+| F-05 | 🟠 Menengah | Daftar entity `client_wins` belum memuat `population_balances` dan `inventory_balances` | `2026112411`, `infra-auth`, `apps/mobile` | Terimplementasi + lolos unit test Rust |
+| F-06 | 🟠 Menengah | Kolom audit belum seragam pada tabel sync/outbox & `updated_by` stale untuk worker | `2026112410`, `2026112411` | Terimplementasi (`sync_*`, `outbox_events`, `sale_items`, `set_updated_audit()`) |
+| F-07 | 🟡 Rendah | Index mortality/environment per batch belum ada | `2026112411` | Terimplementasi |
+| F-08 | 🟠 Menengah | Dua runner migrasi & GRANT tidak konsisten | `deploy/db/init-app-role.sql`, `infra-db` | `ALTER DEFAULT PRIVILEGES` + guard `_sqlx_migrations` ditambahkan; penyatuan runner masih menunggu keputusan |
+| F-09 | 🟡 Rendah | Dokumentasi & seed formula tertinggal dari kode | `docs/06`, `docs/09`, `docs/10`, `data/002`, `2026112411` | Diselaraskan (termasuk 7 kode `calculation_versions` & `data/002`) |
+| F-10 | 🟡 Rendah | `audit_logs` dengan `organization_id NULL` tidak bisa dibaca via RLS | `2026112411`, `infra-db`, `mod-tenant`, OpenAPI | `NOT NULL` diterapkan di SQL, Rust DTO/logger, & OpenAPI |
 
 ---
 
@@ -289,7 +284,7 @@ ALTER DEFAULT PRIVILEGES FOR ROLE <migrator_role> IN SCHEMA public
 
 3. ADR 003 konsekuensi meminta seed `species_production_profiles` berversi. Migrasi saat ini tidak mengisinya. ADR 003 sudah diberi catatan implementasi: profil dibuat tenant, seed hanya katalog spesies dan metadata formula.
 
-4. Kode kalkulasi memakai kode formula `AREA_ONLY`, `CAPACITY_UTILIZATION`, `ENCLOSURE_BIOMASS_ESTIMATE`, `FEEDING_VARIANCE`, `HPP_OUTPUT_UNIT`, dan `EGG_OUTPUT_FORECAST`, tetapi kode-kode itu tidak ada di seed `data/002` maupun `2026112409`. Sebaliknya `CAPACITY_BY_HEAD`/`CAPACITY_BY_BIOMASS` ada di seed tetapi tidak dipakai kode. Perlu keputusan mana yang kanonik sebelum `calculation_versions` dipakai sebagai lookup runtime.
+4. Kode kalkulasi memakai kode formula `ABW`, `AREA_ONLY`, `CAPACITY_UTILIZATION`, `ENCLOSURE_BIOMASS_ESTIMATE`, `FEEDING_VARIANCE`, `HPP_OUTPUT_UNIT`, dan `EGG_OUTPUT_FORECAST`. Ketujuh kode tersebut telah ditambahkan ke `2026112411_fix_rls_rbac_hardening.sql` serta diselaraskan ke `data/002_ternakmatric_seed.sql` (bersama `SGR` & `HPP_LIVE_WEIGHT`). `CAPACITY_BY_HEAD`/`CAPACITY_BY_BIOMASS` tetap dipertahankan sebagai kode historis sementara `mod-calculation` memakai `CAPACITY_UTILIZATION` secara kanonik.
 
 ---
 
@@ -297,14 +292,14 @@ ALTER DEFAULT PRIVILEGES FOR ROLE <migrator_role> IN SCHEMA public
 
 `audit_logs.organization_id` nullable, tetapi `2026112408` memberi policy ketat `organization_id = current_organization_id()`. Baris dengan `organization_id IS NULL` tidak bisa dibaca/ditulis oleh app role.
 
-Saat ini semua pemanggilan `AuditLogger::record()` yang terlihat memakai `Some(org_id)`, jadi dampaknya masih latent. Jika audit global memang diperlukan, tambahkan policy khusus untuk peran/admin; jika tidak, ubah kolom menjadi `NOT NULL` dan pisahkan audit identitas ke tabel lain.
+Seluruh 24 pemanggilan `AuditLogger::record()` mengirim `organization_id` tenant. Diputuskan mewajibkan tenant scope (`ALTER TABLE audit_logs ALTER COLUMN organization_id SET NOT NULL` di `2026112411`), dan signature `AuditLogger::record`, `AuditLogRow`, serta `AuditLogDto` / OpenAPI telah diselaraskan ke non-optional.
 
 ---
 
 ## 5. Catatan minor
 
-- `production_units.area_m2` dan `volume_m3` mengizinkan `0` (`>= 0`), sementara `docs/10` poin 11 menyebut “dimensi/area > 0”. Perlu keputusan apakah `0` valid.
-- Seed species di `2026112409` lebih sempit dari `data/002_ternakmatric_seed.sql` (misalnya tidak ada salmon, tuna, kepiting, lobster, tiram). Jika katalog broad diinginkan, samakan seed-nya.
+- `production_units.area_m2` dan `volume_m3` telah diperketat di `2026112411` (`IS NULL OR > 0`) selaras dengan `mod-calculation` dan `docs/10` poin 11.
+- Seed global `species` di `2026112411` dilengkapi agar setara dengan 39 spesies katalog `data/002_ternakmatric_seed.sql` (dibungkus `DISABLE`/`ENABLE ROW LEVEL SECURITY`).
 - `species` seed belum punya kategori `other`; data baseline juga demikian, jadi ini konsisten tetapi perlu dicatat jika kategori `other` diharapkan punya contoh master.
 
 ---
@@ -350,16 +345,18 @@ berisi: seed `role_permissions`, penanganan seed global terhadap RLS, trigger ap
 
 ---
 
-## 7. Status definition-of-done
+## 7. Status implementasi & definition-of-done
 
-Sebelum `docs/10-DATABASE-HARDENING.md` ditandai hijau semua, checklist ini sebaiknya ditambahkan:
+Seluruh migrasi telah disatukan bersih ke `backend/migrations/2026112401`–`2026112409` (dengan `2026112408_seed_catalogs.sql` sebelum `2026112409_rls_triggers_hardening.sql`), disertai penyelarasan `deploy/db/init-app-role.sql`, backend Rust, mobile, OpenAPI, dan `docs/`. Verifikasi yang **sudah berjalan hijau**: `cargo fmt --all`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo test --workspace --offline`, export `ternakmatric.v1.json`, typecheck `@ternakmatric/api-contracts` (`tsc --noEmit`), dan `apps/web` (`typecheck`, `build:staging`, & `build`). Yang belum berjalan karena PostgreSQL/Docker belum tersedia di mesin lokal dan `packages/api-contracts/node_modules` belum terpasang: `gen:ts` (`openapi-typescript`) serta seluruh pengujian live DB di bawah.
 
-- [ ] Migrasi bisa dijalankan dari database kosong dengan role non-superuser.
-- [ ] Seed global tidak bergantung pada bypass RLS.
+Sebelum `docs/10-DATABASE-HARDENING.md` ditandai hijau semua, checklist ini masih harus diverifikasi terhadap PostgreSQL live:
+
+- [ ] Migrasi `2026112401`–`2026112409` bisa dijalankan dari database kosong dengan role non-superuser tanpa `BYPASSRLS`.
+- [ ] Seed global di `2026112408` tidak bergantung pada bypass RLS.
 - [ ] Role non-owner memiliki permission yang sesuai dari `role_permissions`.
 - [ ] Query sebagai organisasi A tidak melihat data organisasi B.
-- [ ] `UPDATE`/`DELETE` pada ledger yang ditentukan ADR 002 gagal.
-- [ ] `client_wins` ditolak untuk semua entity ledger/finance/projection.
+- [ ] `UPDATE`/`DELETE` pada ledger yang ditentukan ADR 002 gagal (termasuk `production_outputs` serta `inventory_transactions` berstatus `posted`/`voided`).
+- [ ] `client_wins` ditolak untuk semua entity ledger/finance/projection (terverifikasi di unit test Rust; menunggu uji constraint SQL live).
 - [ ] Retry `sync_operations` dua kali tidak membuat duplikat.
-- [ ] Worker bisa menulis `calculation_runs` dan `outbox_events` tanpa `updated_by` palsu.
+- [ ] Worker bisa menulis `calculation_runs` dan `outbox_events` serta memperbarui `vaccination_schedules` tanpa `updated_by` palsu.
 - [ ] CI menjalankan migrasi + tenant isolation test.

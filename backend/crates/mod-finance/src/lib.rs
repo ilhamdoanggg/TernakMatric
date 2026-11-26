@@ -95,7 +95,11 @@ pub async fn record_expense<S: AppBackendState>(
 ) -> Result<(axum::http::StatusCode, Json<ExpenseDto>), ApiError> {
     auth.require(Permission::FinanceWrite).map_err(ApiError)?;
     let total_amount = (req.quantity * req.unit_cost).round_dp(2);
-    let mut tx = auth.context().begin_tx(state.pool()).await.map_err(ApiError)?;
+    let mut tx = auth
+        .context()
+        .begin_tx(state.pool())
+        .await
+        .map_err(ApiError)?;
     let row: ExpenseDto = sqlx::query_as(
         r#"
         INSERT INTO expenses (
@@ -124,7 +128,7 @@ pub async fn record_expense<S: AppBackendState>(
 
     AuditLogger::record(
         &mut tx,
-        Some(auth.organization_id),
+        auth.organization_id,
         Some(auth.user_id),
         "expense.recorded",
         "expenses",
@@ -157,7 +161,11 @@ pub async fn record_sale<S: AppBackendState>(
             "sale must contain at least one item".into(),
         )));
     }
-    let mut tx = auth.context().begin_tx(state.pool()).await.map_err(ApiError)?;
+    let mut tx = auth
+        .context()
+        .begin_tx(state.pool())
+        .await
+        .map_err(ApiError)?;
     let (sale_id, created_at, created_by): (Uuid, DateTime<Utc>, Option<Uuid>) = sqlx::query_as(
         r#"
         INSERT INTO sales (organization_id, batch_id, sale_date, buyer_name, currency, notes, created_by)
@@ -203,7 +211,7 @@ pub async fn record_sale<S: AppBackendState>(
 
     AuditLogger::record(
         &mut tx,
-        Some(auth.organization_id),
+        auth.organization_id,
         Some(auth.user_id),
         "sale.recorded",
         "sales",
@@ -241,7 +249,11 @@ pub async fn get_batch_financial_summary<S: AppBackendState>(
     Path(batch_id): Path<Uuid>,
 ) -> Result<Json<BatchFinancialSummaryResponse>, ApiError> {
     auth.require(Permission::AnalyticsRead).map_err(ApiError)?;
-    let mut tx = auth.context().begin_tx(state.pool()).await.map_err(ApiError)?;
+    let mut tx = auth
+        .context()
+        .begin_tx(state.pool())
+        .await
+        .map_err(ApiError)?;
 
     let feed_cost: Decimal = sqlx::query_scalar(
         "SELECT COALESCE(SUM(quantity * COALESCE(unit_cost, 0)), 0) FROM feeding_records WHERE organization_id = $1 AND batch_id = $2",
@@ -331,7 +343,8 @@ pub async fn get_batch_financial_summary<S: AppBackendState>(
     } else {
         HppBasis::RealizedPlusStandingBiomass
     };
-    let hpp_per_kg_live = compute_hpp_per_kg_live(&costs, harvested_live_kg, standing_kg, basis, now).ok();
+    let hpp_per_kg_live =
+        compute_hpp_per_kg_live(&costs, harvested_live_kg, standing_kg, basis, now).ok();
 
     Ok(Json(BatchFinancialSummaryResponse {
         batch_id,

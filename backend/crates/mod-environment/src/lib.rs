@@ -86,7 +86,11 @@ pub async fn list_enclosure_readings<S: AppBackendState>(
     auth: AuthPrincipal,
     Path(enclosure_id): Path<Uuid>,
 ) -> Result<Json<Vec<EnvironmentReadingDto>>, ApiError> {
-    let mut tx = auth.context().begin_tx(state.pool()).await.map_err(ApiError)?;
+    let mut tx = auth
+        .context()
+        .begin_tx(state.pool())
+        .await
+        .map_err(ApiError)?;
     let rows: Vec<EnvironmentReadingDto> = sqlx::query_as(
         r#"
         SELECT id, unit_id, batch_id, metric_id, metric_value, unit, measured_at, source, notes,
@@ -118,8 +122,13 @@ pub async fn record_manual_reading<S: AppBackendState>(
     auth: AuthPrincipal,
     Json(req): Json<CreateReadingRequest>,
 ) -> Result<(axum::http::StatusCode, Json<EnvironmentReadingDto>), ApiError> {
-    auth.require(Permission::EnvironmentWrite).map_err(ApiError)?;
-    let mut tx = auth.context().begin_tx(state.pool()).await.map_err(ApiError)?;
+    auth.require(Permission::EnvironmentWrite)
+        .map_err(ApiError)?;
+    let mut tx = auth
+        .context()
+        .begin_tx(state.pool())
+        .await
+        .map_err(ApiError)?;
     let row: EnvironmentReadingDto = sqlx::query_as(
         r#"
         INSERT INTO environment_readings (
@@ -145,7 +154,7 @@ pub async fn record_manual_reading<S: AppBackendState>(
 
     AuditLogger::record(
         &mut tx,
-        Some(auth.organization_id),
+        auth.organization_id,
         Some(auth.user_id),
         "environment_reading.recorded",
         "environment_readings",
@@ -172,8 +181,13 @@ pub async fn ingest_iot_reading<S: AppBackendState>(
     auth: AuthPrincipal,
     Json(req): Json<IotIngestRequest>,
 ) -> Result<(axum::http::StatusCode, Json<EnvironmentReadingDto>), ApiError> {
-    auth.require(Permission::EnvironmentWrite).map_err(ApiError)?;
-    let mut tx = auth.context().begin_tx(state.pool()).await.map_err(ApiError)?;
+    auth.require(Permission::EnvironmentWrite)
+        .map_err(ApiError)?;
+    let mut tx = auth
+        .context()
+        .begin_tx(state.pool())
+        .await
+        .map_err(ApiError)?;
     let metric_id: Uuid = sqlx::query_scalar("SELECT id FROM environment_metrics WHERE code = $1")
         .bind(req.metric_code.trim().to_uppercase())
         .fetch_one(&mut *tx)
@@ -223,7 +237,17 @@ pub fn router<S: AppBackendState>() -> Router<S> {
 
 #[derive(OpenApi)]
 #[openapi(
-    paths(list_metrics, list_enclosure_readings, record_manual_reading, ingest_iot_reading),
-    components(schemas(EnvironmentMetricDto, CreateReadingRequest, IotIngestRequest, EnvironmentReadingDto))
+    paths(
+        list_metrics,
+        list_enclosure_readings,
+        record_manual_reading,
+        ingest_iot_reading
+    ),
+    components(schemas(
+        EnvironmentMetricDto,
+        CreateReadingRequest,
+        IotIngestRequest,
+        EnvironmentReadingDto
+    ))
 )]
 pub struct EnvironmentApi;

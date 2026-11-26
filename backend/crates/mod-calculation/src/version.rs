@@ -61,6 +61,7 @@ impl<T> CalculationResult<T> {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn estimate(
         value: T,
         unit: impl Into<String>,

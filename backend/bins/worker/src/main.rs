@@ -126,17 +126,22 @@ async fn run_vaccination_reminders_and_alerts(pool: &PgPool) -> Result<(), sqlx:
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    infra_db::load_env_files();
+
     tracing_subscriber::fmt()
         .with_env_filter(std::env::var("RUST_LOG").unwrap_or_else(|_| "worker=info".into()))
         .init();
 
-    let db_url = std::env::var("DATABASE_URL")
-        .unwrap_or_else(|_| "postgres://ternakmatric:ternakmatric@localhost:5432/ternakmatric".into());
+    let db_url = std::env::var("DATABASE_URL").unwrap_or_else(|_| {
+        "postgres://ternakmatric:ternakmatric@localhost:5432/ternakmatric".into()
+    });
     let pool = PgPoolOptions::new()
         .max_connections(8)
         .connect_lazy(&db_url)?;
 
-    tracing::info!("TernakMatric background worker started (daily snapshot, vaccine reminder, alert engine)");
+    tracing::info!(
+        "TernakMatric background worker started (daily snapshot, vaccine reminder, alert engine)"
+    );
 
     let mut tick = tokio::time::interval(Duration::from_secs(300));
     loop {

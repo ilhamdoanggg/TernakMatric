@@ -79,7 +79,11 @@ pub async fn list_species<S: AppBackendState>(
     auth: AuthPrincipal,
     Query(filter): Query<SpeciesFilter>,
 ) -> Result<Json<Vec<SpeciesDto>>, ApiError> {
-    let mut tx = auth.context().begin_tx(state.pool()).await.map_err(ApiError)?;
+    let mut tx = auth
+        .context()
+        .begin_tx(state.pool())
+        .await
+        .map_err(ApiError)?;
     let category_str = filter.category.map(|c| c.as_str().to_string());
     let rows: Vec<SpeciesDto> = sqlx::query_as(
         r#"
@@ -114,7 +118,11 @@ pub async fn create_custom_species<S: AppBackendState>(
     Json(req): Json<CreateSpeciesRequest>,
 ) -> Result<(axum::http::StatusCode, Json<SpeciesDto>), ApiError> {
     auth.require(Permission::SpeciesManage).map_err(ApiError)?;
-    let mut tx = auth.context().begin_tx(state.pool()).await.map_err(ApiError)?;
+    let mut tx = auth
+        .context()
+        .begin_tx(state.pool())
+        .await
+        .map_err(ApiError)?;
     let row: SpeciesDto = sqlx::query_as(
         r#"
         INSERT INTO species (organization_id, category, common_name, scientific_name, code, description, is_system, created_by)
@@ -136,7 +144,7 @@ pub async fn create_custom_species<S: AppBackendState>(
 
     AuditLogger::record(
         &mut tx,
-        Some(auth.organization_id),
+        auth.organization_id,
         Some(auth.user_id),
         "species.created",
         "species",
@@ -163,7 +171,11 @@ pub async fn list_profiles<S: AppBackendState>(
     auth: AuthPrincipal,
     Path(species_id): Path<Uuid>,
 ) -> Result<Json<Vec<SpeciesProfileDto>>, ApiError> {
-    let mut tx = auth.context().begin_tx(state.pool()).await.map_err(ApiError)?;
+    let mut tx = auth
+        .context()
+        .begin_tx(state.pool())
+        .await
+        .map_err(ApiError)?;
     let rows: Vec<SpeciesProfileDto> = sqlx::query_as(
         r#"
         SELECT id, organization_id, species_id, code, name, production_system_id, parameters,
@@ -197,7 +209,11 @@ pub async fn create_profile<S: AppBackendState>(
     Json(req): Json<CreateProfileRequest>,
 ) -> Result<(axum::http::StatusCode, Json<SpeciesProfileDto>), ApiError> {
     auth.require(Permission::SpeciesManage).map_err(ApiError)?;
-    let mut tx = auth.context().begin_tx(state.pool()).await.map_err(ApiError)?;
+    let mut tx = auth
+        .context()
+        .begin_tx(state.pool())
+        .await
+        .map_err(ApiError)?;
     let row: SpeciesProfileDto = sqlx::query_as(
         r#"
         INSERT INTO species_production_profiles (
@@ -222,7 +238,7 @@ pub async fn create_profile<S: AppBackendState>(
 
     AuditLogger::record(
         &mut tx,
-        Some(auth.organization_id),
+        auth.organization_id,
         Some(auth.user_id),
         "species_profile.created",
         "species_production_profiles",
@@ -252,6 +268,11 @@ pub fn router<S: AppBackendState>() -> Router<S> {
 #[derive(OpenApi)]
 #[openapi(
     paths(list_species, create_custom_species, list_profiles, create_profile),
-    components(schemas(CreateSpeciesRequest, SpeciesDto, CreateProfileRequest, SpeciesProfileDto))
+    components(schemas(
+        CreateSpeciesRequest,
+        SpeciesDto,
+        CreateProfileRequest,
+        SpeciesProfileDto
+    ))
 )]
 pub struct SpeciesApi;

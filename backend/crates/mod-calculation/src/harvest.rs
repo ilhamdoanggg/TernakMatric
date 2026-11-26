@@ -50,9 +50,9 @@ pub fn forecast_meat_harvest(
     .round_dp(0);
     let projected_population: i64 = projected_pop_dec.to_string().parse().unwrap_or(0);
 
-    let projected_abw_g =
-        (input.current_abw_g + input.expected_adg_g_per_day * Decimal::from(input.days_until_harvest))
-            .round_dp(3);
+    let projected_abw_g = (input.current_abw_g
+        + input.expected_adg_g_per_day * Decimal::from(input.days_until_harvest))
+    .round_dp(3);
     let projected_harvest_kg =
         ((Decimal::from(projected_population) * projected_abw_g) / dec!(1000)).round_dp(3);
 
@@ -68,14 +68,12 @@ pub fn forecast_meat_harvest(
         parameter_version,
         calculated_at,
         input.last_sample_at,
-        vec![
-            format!(
-                "Assumes {}% survival over remaining {} days and ADG {} g/day from species profile.",
-                input.assumed_survival_rate_percent,
-                input.days_until_harvest,
-                input.expected_adg_g_per_day
-            ),
-        ],
+        vec![format!(
+            "Assumes {}% survival over remaining {} days and ADG {} g/day from species profile.",
+            input.assumed_survival_rate_percent,
+            input.days_until_harvest,
+            input.expected_adg_g_per_day
+        )],
     ))
 }
 

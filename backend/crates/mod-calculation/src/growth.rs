@@ -136,8 +136,7 @@ pub fn compute_milk_yield_per_head_day(
             reason: "lactating_population and days must be > 0 and milk_liters >= 0".into(),
         });
     }
-    let yield_per_day =
-        (milk_liters / (Decimal::from(lactating_population) * days)).round_dp(3);
+    let yield_per_day = (milk_liters / (Decimal::from(lactating_population) * days)).round_dp(3);
     Ok(CalculationResult::exact(
         yield_per_day,
         "liter/head/day",

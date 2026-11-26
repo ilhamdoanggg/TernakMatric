@@ -125,7 +125,11 @@ pub async fn list_vaccinations<S: AppBackendState>(
     auth: AuthPrincipal,
     Path(batch_id): Path<Uuid>,
 ) -> Result<Json<Vec<VaccinationScheduleDto>>, ApiError> {
-    let mut tx = auth.context().begin_tx(state.pool()).await.map_err(ApiError)?;
+    let mut tx = auth
+        .context()
+        .begin_tx(state.pool())
+        .await
+        .map_err(ApiError)?;
     let rows: Vec<VaccinationScheduleDto> = sqlx::query_as(
         r#"
         SELECT id, batch_id, vaccine_name, target_disease, route, scheduled_date, dosage,
@@ -159,7 +163,11 @@ pub async fn schedule_vaccination<S: AppBackendState>(
     Json(req): Json<CreateVaccinationScheduleRequest>,
 ) -> Result<(axum::http::StatusCode, Json<VaccinationScheduleDto>), ApiError> {
     auth.require(Permission::HealthWrite).map_err(ApiError)?;
-    let mut tx = auth.context().begin_tx(state.pool()).await.map_err(ApiError)?;
+    let mut tx = auth
+        .context()
+        .begin_tx(state.pool())
+        .await
+        .map_err(ApiError)?;
     let row: VaccinationScheduleDto = sqlx::query_as(
         r#"
         INSERT INTO vaccination_schedules (
@@ -185,7 +193,7 @@ pub async fn schedule_vaccination<S: AppBackendState>(
 
     AuditLogger::record(
         &mut tx,
-        Some(auth.organization_id),
+        auth.organization_id,
         Some(auth.user_id),
         "vaccination.scheduled",
         "vaccination_schedules",
@@ -215,7 +223,11 @@ pub async fn update_vaccination_status<S: AppBackendState>(
     Json(req): Json<UpdateVaccinationStatusRequest>,
 ) -> Result<Json<VaccinationScheduleDto>, ApiError> {
     auth.require(Permission::HealthWrite).map_err(ApiError)?;
-    let mut tx = auth.context().begin_tx(state.pool()).await.map_err(ApiError)?;
+    let mut tx = auth
+        .context()
+        .begin_tx(state.pool())
+        .await
+        .map_err(ApiError)?;
 
     let before: VaccinationScheduleDto = sqlx::query_as(
         r#"
@@ -255,7 +267,7 @@ pub async fn update_vaccination_status<S: AppBackendState>(
 
     AuditLogger::record(
         &mut tx,
-        Some(auth.organization_id),
+        auth.organization_id,
         Some(auth.user_id),
         "vaccination.updated",
         "vaccination_schedules",
@@ -285,7 +297,11 @@ pub async fn record_health_event<S: AppBackendState>(
     Json(req): Json<CreateHealthRecordRequest>,
 ) -> Result<(axum::http::StatusCode, Json<HealthRecordDto>), ApiError> {
     auth.require(Permission::HealthWrite).map_err(ApiError)?;
-    let mut tx = auth.context().begin_tx(state.pool()).await.map_err(ApiError)?;
+    let mut tx = auth
+        .context()
+        .begin_tx(state.pool())
+        .await
+        .map_err(ApiError)?;
     let row: HealthRecordDto = sqlx::query_as(
         r#"
         INSERT INTO health_records (
@@ -311,7 +327,7 @@ pub async fn record_health_event<S: AppBackendState>(
 
     AuditLogger::record(
         &mut tx,
-        Some(auth.organization_id),
+        auth.organization_id,
         Some(auth.user_id),
         "health_record.created",
         "health_records",
@@ -346,7 +362,11 @@ pub async fn record_mortality<S: AppBackendState>(
             "mortality quantity must be > 0".into(),
         )));
     }
-    let mut tx = auth.context().begin_tx(state.pool()).await.map_err(ApiError)?;
+    let mut tx = auth
+        .context()
+        .begin_tx(state.pool())
+        .await
+        .map_err(ApiError)?;
 
     let current_pop: i32 = sqlx::query_scalar(
         "SELECT quantity FROM population_balances WHERE organization_id = $1 AND batch_id = $2 FOR UPDATE",
@@ -419,7 +439,7 @@ pub async fn record_mortality<S: AppBackendState>(
 
     AuditLogger::record(
         &mut tx,
-        Some(auth.organization_id),
+        auth.organization_id,
         Some(auth.user_id),
         "mortality.recorded",
         "mortality_records",
@@ -458,7 +478,11 @@ pub async fn record_biosecurity_log<S: AppBackendState>(
     Json(req): Json<CreateBiosecurityLogRequest>,
 ) -> Result<(axum::http::StatusCode, Json<BiosecurityLogDto>), ApiError> {
     auth.require(Permission::HealthWrite).map_err(ApiError)?;
-    let mut tx = auth.context().begin_tx(state.pool()).await.map_err(ApiError)?;
+    let mut tx = auth
+        .context()
+        .begin_tx(state.pool())
+        .await
+        .map_err(ApiError)?;
     let row: BiosecurityLogDto = sqlx::query_as(
         r#"
         INSERT INTO biosecurity_logs (
@@ -487,7 +511,7 @@ pub async fn record_biosecurity_log<S: AppBackendState>(
 
     AuditLogger::record(
         &mut tx,
-        Some(auth.organization_id),
+        auth.organization_id,
         Some(auth.user_id),
         "biosecurity.logged",
         "biosecurity_logs",
@@ -528,12 +552,24 @@ pub fn router<S: AppBackendState>() -> Router<S> {
 
 #[derive(OpenApi)]
 #[openapi(
-    paths(list_vaccinations, schedule_vaccination, update_vaccination_status, record_health_event, record_mortality, record_biosecurity_log),
+    paths(
+        list_vaccinations,
+        schedule_vaccination,
+        update_vaccination_status,
+        record_health_event,
+        record_mortality,
+        record_biosecurity_log
+    ),
     components(schemas(
-        CreateVaccinationScheduleRequest, UpdateVaccinationStatusRequest, VaccinationScheduleDto,
-        CreateHealthRecordRequest, HealthRecordDto,
-        RecordMortalityRequest, MortalityResponse,
-        CreateBiosecurityLogRequest, BiosecurityLogDto
+        CreateVaccinationScheduleRequest,
+        UpdateVaccinationStatusRequest,
+        VaccinationScheduleDto,
+        CreateHealthRecordRequest,
+        HealthRecordDto,
+        RecordMortalityRequest,
+        MortalityResponse,
+        CreateBiosecurityLogRequest,
+        BiosecurityLogDto
     ))
 )]
 pub struct HealthApi;

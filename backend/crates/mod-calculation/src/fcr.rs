@@ -62,7 +62,9 @@ pub fn compute_fcr(
     let fcr = (input.total_feed_kg / gain_kg).round_dp(3);
     let note = match input.mode {
         FcrMode::Economic => "Economic FCR excludes mortality/cull biomass from denominator gain.",
-        FcrMode::Biological => "Biological FCR includes mortality/cull biomass in denominator gain.",
+        FcrMode::Biological => {
+            "Biological FCR includes mortality/cull biomass in denominator gain."
+        }
     };
 
     Ok(CalculationResult::estimate(
