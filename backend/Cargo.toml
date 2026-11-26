@@ -24,6 +24,7 @@ license = "Proprietary"
 authors = ["TernakMatric Engineering"]
 
 [workspace.dependencies]
+argon2 = "0.5"
 async-trait = "0.1"
 axum = "0.8"
 chrono = { version = "0.4", features = ["serde"] }

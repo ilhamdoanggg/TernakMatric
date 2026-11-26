@@ -119,6 +119,29 @@ pub struct FcrQuery {
     pub mode: Option<FcrMode>,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct InventoryBalanceQuery {
+    pub warehouse_id: Option<Uuid>,
+    pub feed_product_id: Option<Uuid>,
+    pub limit: Option<i64>,
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema, sqlx::FromRow)]
+pub struct InventoryBalanceDto {
+    pub warehouse_id: Uuid,
+    pub warehouse_code: String,
+    pub warehouse_name: String,
+    pub feed_product_id: Uuid,
+    pub product_sku: String,
+    pub product_name: String,
+    pub default_unit: String,
+    pub lot_code: String,
+    pub quantity: Decimal,
+    pub version: i32,
+    pub updated_at: DateTime<Utc>,
+    pub updated_by: Option<Uuid>,
+}
+
 #[utoipa::path(
     get,
     path = "/api/v1/warehouses",
@@ -733,6 +756,51 @@ pub async fn get_batch_fcr<S: AppBackendState>(
     Ok(Json(res))
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/inventory/balances",
+    responses((status = 200, body = [InventoryBalanceDto])),
+    tag = "Feeding & Inventory"
+)]
+pub async fn list_inventory_balances<S: AppBackendState>(
+    State(state): State<S>,
+    auth: AuthPrincipal,
+    Query(query): Query<InventoryBalanceQuery>,
+) -> Result<Json<Vec<InventoryBalanceDto>>, ApiError> {
+    let limit = query.limit.unwrap_or(100).clamp(1, 200);
+    let mut tx = auth
+        .context()
+        .begin_tx(state.pool())
+        .await
+        .map_err(ApiError)?;
+    let rows: Vec<InventoryBalanceDto> = sqlx::query_as(
+        r#"
+        SELECT ib.warehouse_id, w.code AS warehouse_code, w.name AS warehouse_name,
+               ib.feed_product_id, fp.sku AS product_sku, fp.name AS product_name,
+               fp.default_unit, ib.lot_code, ib.quantity, ib.version, ib.updated_at, ib.updated_by
+        FROM inventory_balances ib
+        JOIN warehouses w
+          ON w.id = ib.warehouse_id AND w.organization_id = ib.organization_id
+        JOIN feed_products fp
+          ON fp.id = ib.feed_product_id AND fp.organization_id = ib.organization_id
+        WHERE ib.organization_id = $1
+          AND ($2::uuid IS NULL OR ib.warehouse_id = $2)
+          AND ($3::uuid IS NULL OR ib.feed_product_id = $3)
+        ORDER BY w.name ASC, fp.name ASC, ib.lot_code ASC
+        LIMIT $4
+        "#,
+    )
+    .bind(auth.organization_id.0)
+    .bind(query.warehouse_id)
+    .bind(query.feed_product_id)
+    .bind(limit)
+    .fetch_all(&mut *tx)
+    .await
+    .map_err(|e| ApiError(map_sqlx_err(e)))?;
+    tx.commit().await.map_err(|e| ApiError(map_sqlx_err(e)))?;
+    Ok(Json(rows))
+}
+
 pub fn router<S: AppBackendState>() -> Router<S> {
     Router::new()
         .route(
@@ -744,6 +812,10 @@ pub fn router<S: AppBackendState>() -> Router<S> {
             get(list_feed_products::<S>).post(create_feed_product::<S>),
         )
         .route(
+            "/api/v1/inventory/balances",
+            get(list_inventory_balances::<S>),
+        )
+        .route(
             "/api/v1/inventory/transactions",
             post(create_inventory_transaction::<S>),
         )
@@ -753,10 +825,10 @@ pub fn router<S: AppBackendState>() -> Router<S> {
 
 #[derive(OpenApi)]
 #[openapi(
-    paths(list_warehouses, create_warehouse, list_feed_products, create_feed_product, create_inventory_transaction, record_feeding, get_batch_fcr),
+    paths(list_warehouses, create_warehouse, list_feed_products, create_feed_product, list_inventory_balances, create_inventory_transaction, record_feeding, get_batch_fcr),
     components(schemas(
         CreateWarehouseRequest, WarehouseDto, CreateFeedProductRequest, FeedProductDto,
-        InventoryLineInput, CreateInventoryTxRequest, InventoryTxResponse,
+        InventoryBalanceDto, InventoryLineInput, CreateInventoryTxRequest, InventoryTxResponse,
         RecordFeedingRequest, FeedingRecordResponse, FcrSummary, CalculationResult<FcrSummary>
     ))
 )]

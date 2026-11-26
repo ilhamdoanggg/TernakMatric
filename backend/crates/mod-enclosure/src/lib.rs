@@ -59,10 +59,65 @@ pub struct EnclosureDto {
     pub updated_by: Option<Uuid>,
 }
 
+#[derive(Debug, Serialize, Deserialize, ToSchema, sqlx::FromRow)]
+pub struct UnitTypeDto {
+    pub id: Uuid,
+    pub code: String,
+    pub name: String,
+    pub habitat: String,
+    pub description: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema, sqlx::FromRow)]
+pub struct ProductionSystemDto {
+    pub id: Uuid,
+    pub code: String,
+    pub name: String,
+    pub description: Option<String>,
+}
+
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct CalculateCapacityRequest {
     pub requested_addition: Decimal,
     pub parameter_version: Option<i32>,
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/v1/unit-types",
+    responses((status = 200, body = [UnitTypeDto])),
+    tag = "Enclosure"
+)]
+pub async fn list_unit_types<S: AppBackendState>(
+    State(state): State<S>,
+    _auth: AuthPrincipal,
+) -> Result<Json<Vec<UnitTypeDto>>, ApiError> {
+    let rows: Vec<UnitTypeDto> = sqlx::query_as(
+        "SELECT id, code, name, habitat, description FROM unit_types ORDER BY habitat ASC, name ASC",
+    )
+    .fetch_all(state.pool())
+    .await
+    .map_err(|e| ApiError(map_sqlx_err(e)))?;
+    Ok(Json(rows))
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/v1/production-systems",
+    responses((status = 200, body = [ProductionSystemDto])),
+    tag = "Enclosure"
+)]
+pub async fn list_production_systems<S: AppBackendState>(
+    State(state): State<S>,
+    _auth: AuthPrincipal,
+) -> Result<Json<Vec<ProductionSystemDto>>, ApiError> {
+    let rows: Vec<ProductionSystemDto> = sqlx::query_as(
+        "SELECT id, code, name, description FROM production_systems ORDER BY name ASC",
+    )
+    .fetch_all(state.pool())
+    .await
+    .map_err(|e| ApiError(map_sqlx_err(e)))?;
+    Ok(Json(rows))
 }
 
 #[utoipa::path(
@@ -357,6 +412,11 @@ pub async fn calculate_capacity<S: AppBackendState>(
 
 pub fn router<S: AppBackendState>() -> Router<S> {
     Router::new()
+        .route("/api/v1/unit-types", get(list_unit_types::<S>))
+        .route(
+            "/api/v1/production-systems",
+            get(list_production_systems::<S>),
+        )
         .route(
             "/api/v1/enclosures",
             get(list_enclosures::<S>).post(create_enclosure::<S>),
@@ -373,8 +433,9 @@ pub fn router<S: AppBackendState>() -> Router<S> {
 
 #[derive(OpenApi)]
 #[openapi(
-    paths(list_enclosures, create_enclosure, get_enclosure, update_enclosure, calculate_capacity),
+    paths(list_unit_types, list_production_systems, list_enclosures, create_enclosure, get_enclosure, update_enclosure, calculate_capacity),
     components(schemas(
+        UnitTypeDto, ProductionSystemDto,
         CreateEnclosureRequest, UpdateEnclosureRequest, EnclosureDto, CalculateCapacityRequest,
         EnclosureGeometry, CapacityEvaluation, CalculationResult<CapacityEvaluation>
     ))

@@ -1,16 +1,18 @@
-use axum::extract::{Path, State};
-use axum::routing::{get, patch, post};
+use axum::extract::{Path, Query, State};
+use axum::routing::{get, post};
 use axum::{Json, Router};
 use chrono::{DateTime, NaiveDate, Utc};
 use infra_auth::{ApiError, AppBackendState, AuthPrincipal, Permission};
 use infra_db::{map_sqlx_err, AuditLogger, OutboxWriter};
 use mod_calculation::{
     compute_abw_g, compute_adg_g_per_day, compute_biomass_kg, compute_sgr_percent_per_day,
-    evaluate_enclosure_capacity, CohortBiomassInput,
+    evaluate_enclosure_capacity, CalculationResult, CohortBiomassInput,
 };
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
+use shared_kernel::error::ErrorEnvelope;
 use shared_kernel::{AppError, MovementType, OutputType};
+use std::collections::HashMap;
 use utoipa::{OpenApi, ToSchema};
 use uuid::Uuid;
 
@@ -47,6 +49,111 @@ pub struct BatchDto {
     pub initial_count: i32,
     pub initial_avg_weight_g: Option<Decimal>,
     pub status: String,
+    pub notes: Option<String>,
+    pub version: i32,
+    pub created_at: DateTime<Utc>,
+    pub created_by: Option<Uuid>,
+    pub updated_at: DateTime<Utc>,
+    pub updated_by: Option<Uuid>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct PaginationQuery {
+    pub limit: Option<i64>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BatchSummaryQuery {
+    pub status: Option<String>,
+    pub limit: Option<i64>,
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct BatchDetailDto {
+    pub id: Uuid,
+    pub organization_id: Uuid,
+    pub batch_code: String,
+    pub species_id: Uuid,
+    pub production_profile_id: Option<Uuid>,
+    pub start_date: NaiveDate,
+    pub target_end_date: Option<NaiveDate>,
+    pub initial_count: i32,
+    pub initial_avg_weight_g: Option<Decimal>,
+    pub status: String,
+    pub notes: Option<String>,
+    pub version: i32,
+    pub created_at: DateTime<Utc>,
+    pub created_by: Option<Uuid>,
+    pub updated_at: DateTime<Utc>,
+    pub updated_by: Option<Uuid>,
+    pub active_enclosure_id: Option<Uuid>,
+    pub current_population: i32,
+    pub latest_abw_g: Option<Decimal>,
+    pub latest_sampled_at: Option<DateTime<Utc>>,
+    pub adg_g_per_day: Option<Decimal>,
+    pub sgr_percent_per_day: Option<Decimal>,
+    #[schema(value_type = Option<CalculationResult<String>>)]
+    pub estimated_biomass: Option<CalculationResult<Decimal>>,
+}
+
+#[derive(sqlx::FromRow)]
+struct BatchSummaryRow {
+    id: Uuid,
+    organization_id: Uuid,
+    batch_code: String,
+    species_id: Uuid,
+    production_profile_id: Option<Uuid>,
+    start_date: NaiveDate,
+    target_end_date: Option<NaiveDate>,
+    initial_count: i32,
+    initial_avg_weight_g: Option<Decimal>,
+    status: String,
+    notes: Option<String>,
+    version: i32,
+    created_at: DateTime<Utc>,
+    created_by: Option<Uuid>,
+    updated_at: DateTime<Utc>,
+    updated_by: Option<Uuid>,
+    active_enclosure_id: Option<Uuid>,
+    current_population: i32,
+}
+
+#[derive(sqlx::FromRow)]
+struct BatchGrowthSampleRow {
+    batch_id: Uuid,
+    sampled_at: DateTime<Utc>,
+    average_weight_g: Option<Decimal>,
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema, sqlx::FromRow)]
+pub struct GrowthSampleDto {
+    pub id: Uuid,
+    pub batch_id: Uuid,
+    pub sampled_at: DateTime<Utc>,
+    pub sample_count: i32,
+    pub total_sample_weight_g: Decimal,
+    pub average_weight_g: Option<Decimal>,
+    pub average_length_cm: Option<Decimal>,
+    pub method: Option<String>,
+    pub notes: Option<String>,
+    pub version: i32,
+    pub created_at: DateTime<Utc>,
+    pub created_by: Option<Uuid>,
+    pub updated_at: DateTime<Utc>,
+    pub updated_by: Option<Uuid>,
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema, sqlx::FromRow)]
+pub struct ProductionOutputDto {
+    pub id: Uuid,
+    pub batch_id: Uuid,
+    pub stock_movement_id: Option<Uuid>,
+    pub occurred_at: DateTime<Utc>,
+    pub output_type: String,
+    pub quantity: Decimal,
+    pub unit: String,
+    pub average_weight_g: Option<Decimal>,
+    pub grade: Option<String>,
     pub notes: Option<String>,
     pub version: i32,
     pub created_at: DateTime<Utc>,
@@ -144,6 +251,82 @@ pub struct OutputResponse {
     pub unit: String,
     pub created_at: DateTime<Utc>,
     pub created_by: Option<Uuid>,
+}
+
+type GrowthSamplePoint = (DateTime<Utc>, Option<Decimal>);
+
+fn assemble_batch_detail(
+    row: BatchSummaryRow,
+    samples: &[GrowthSamplePoint],
+    calculated_at: DateTime<Utc>,
+) -> Result<BatchDetailDto, ApiError> {
+    let latest = samples.first();
+    let prev = samples.get(1);
+    let latest_sampled_at = latest.map(|s| s.0);
+    let latest_abw_g = latest.and_then(|s| s.1);
+
+    let (adg_g_per_day, sgr_percent_per_day) =
+        match ((latest_sampled_at, latest_abw_g), prev.map(|p| (p.0, p.1))) {
+            ((Some(cur_at), Some(cur_abw)), Some((prev_at, Some(prev_abw)))) => {
+                let secs = (cur_at - prev_at).num_seconds();
+                if secs > 0 {
+                    let days = Decimal::from(secs) / Decimal::from(86_400);
+                    let adg = compute_adg_g_per_day(prev_abw, cur_abw, days, None, calculated_at)
+                        .map_err(|e| ApiError(AppError::Validation(e.to_string())))?
+                        .value;
+                    let sgr =
+                        compute_sgr_percent_per_day(prev_abw, cur_abw, days, None, calculated_at)
+                            .map_err(|e| ApiError(AppError::Validation(e.to_string())))?
+                            .value;
+                    (Some(adg), Some(sgr))
+                } else {
+                    (None, None)
+                }
+            }
+            _ => (None, None),
+        };
+
+    let estimated_biomass = match latest_abw_g {
+        Some(abw) => Some(
+            compute_biomass_kg(
+                &CohortBiomassInput {
+                    estimated_population: row.current_population as i64,
+                    average_body_weight_g: abw,
+                    sampled_at: latest_sampled_at,
+                },
+                None,
+                calculated_at,
+            )
+            .map_err(|e| ApiError(AppError::Validation(e.to_string())))?,
+        ),
+        None => None,
+    };
+
+    Ok(BatchDetailDto {
+        id: row.id,
+        organization_id: row.organization_id,
+        batch_code: row.batch_code,
+        species_id: row.species_id,
+        production_profile_id: row.production_profile_id,
+        start_date: row.start_date,
+        target_end_date: row.target_end_date,
+        initial_count: row.initial_count,
+        initial_avg_weight_g: row.initial_avg_weight_g,
+        status: row.status,
+        notes: row.notes,
+        version: row.version,
+        created_at: row.created_at,
+        created_by: row.created_by,
+        updated_at: row.updated_at,
+        updated_by: row.updated_by,
+        active_enclosure_id: row.active_enclosure_id,
+        current_population: row.current_population,
+        latest_abw_g,
+        latest_sampled_at,
+        adg_g_per_day,
+        sgr_percent_per_day,
+        estimated_biomass,
+    })
 }
 
 #[utoipa::path(
@@ -351,6 +534,158 @@ pub async fn create_batch<S: AppBackendState>(
 
     tx.commit().await.map_err(|e| ApiError(map_sqlx_err(e)))?;
     Ok((axum::http::StatusCode::CREATED, Json(batch)))
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/v1/batches/summary",
+    responses((status = 200, body = [BatchDetailDto])),
+    tag = "Production"
+)]
+pub async fn list_batch_summaries<S: AppBackendState>(
+    State(state): State<S>,
+    auth: AuthPrincipal,
+    Query(query): Query<BatchSummaryQuery>,
+) -> Result<Json<Vec<BatchDetailDto>>, ApiError> {
+    let limit = query.limit.unwrap_or(100).clamp(1, 200);
+    let mut tx = auth
+        .context()
+        .begin_tx(state.pool())
+        .await
+        .map_err(ApiError)?;
+
+    let batch_rows: Vec<BatchSummaryRow> = sqlx::query_as(
+        r#"
+        SELECT b.id, b.organization_id, b.batch_code, b.species_id, b.production_profile_id,
+               b.start_date, b.target_end_date, b.initial_count, b.initial_avg_weight_g,
+               b.status, b.notes, b.version, b.created_at, b.created_by, b.updated_at, b.updated_by,
+               bua.unit_id AS active_enclosure_id,
+               COALESCE(pb.quantity, b.initial_count) AS current_population
+        FROM production_batches b
+        LEFT JOIN batch_unit_assignments bua
+          ON bua.organization_id = b.organization_id
+         AND bua.batch_id = b.id
+         AND bua.released_at IS NULL
+        LEFT JOIN population_balances pb
+          ON pb.organization_id = b.organization_id
+         AND pb.batch_id = b.id
+        WHERE b.organization_id = $1
+          AND ($2::text IS NULL OR b.status = $2)
+        ORDER BY b.created_at DESC
+        LIMIT $3
+        "#,
+    )
+    .bind(auth.organization_id.0)
+    .bind(query.status.as_deref())
+    .bind(limit)
+    .fetch_all(&mut *tx)
+    .await
+    .map_err(|e| ApiError(map_sqlx_err(e)))?;
+
+    let mut samples_by_batch: HashMap<Uuid, Vec<GrowthSamplePoint>> = HashMap::new();
+    if !batch_rows.is_empty() {
+        let batch_ids: Vec<Uuid> = batch_rows.iter().map(|b| b.id).collect();
+        let sample_rows: Vec<BatchGrowthSampleRow> = sqlx::query_as(
+            r#"
+            SELECT batch_id, sampled_at, average_weight_g
+            FROM (
+                SELECT batch_id, sampled_at, average_weight_g,
+                       ROW_NUMBER() OVER (PARTITION BY batch_id ORDER BY sampled_at DESC, created_at DESC) AS rn
+                FROM growth_samples
+                WHERE organization_id = $1 AND batch_id = ANY($2)
+            ) ranked
+            WHERE rn <= 2
+            ORDER BY batch_id, rn ASC
+            "#,
+        )
+        .bind(auth.organization_id.0)
+        .bind(&batch_ids)
+        .fetch_all(&mut *tx)
+        .await
+        .map_err(|e| ApiError(map_sqlx_err(e)))?;
+
+        for s in sample_rows {
+            samples_by_batch
+                .entry(s.batch_id)
+                .or_default()
+                .push((s.sampled_at, s.average_weight_g));
+        }
+    }
+
+    tx.commit().await.map_err(|e| ApiError(map_sqlx_err(e)))?;
+
+    let now = Utc::now();
+    let mut details = Vec::with_capacity(batch_rows.len());
+    for row in batch_rows {
+        let samples = samples_by_batch
+            .get(&row.id)
+            .map(Vec::as_slice)
+            .unwrap_or(&[]);
+        details.push(assemble_batch_detail(row, samples, now)?);
+    }
+    Ok(Json(details))
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/v1/batches/{id}",
+    params(("id" = Uuid, Path, description = "Batch ID")),
+    responses((status = 200, body = BatchDetailDto), (status = 404, body = ErrorEnvelope)),
+    tag = "Production"
+)]
+pub async fn get_batch<S: AppBackendState>(
+    State(state): State<S>,
+    auth: AuthPrincipal,
+    Path(id): Path<Uuid>,
+) -> Result<Json<BatchDetailDto>, ApiError> {
+    let mut tx = auth
+        .context()
+        .begin_tx(state.pool())
+        .await
+        .map_err(ApiError)?;
+
+    let row: BatchSummaryRow = sqlx::query_as(
+        r#"
+        SELECT b.id, b.organization_id, b.batch_code, b.species_id, b.production_profile_id,
+               b.start_date, b.target_end_date, b.initial_count, b.initial_avg_weight_g,
+               b.status, b.notes, b.version, b.created_at, b.created_by, b.updated_at, b.updated_by,
+               bua.unit_id AS active_enclosure_id,
+               COALESCE(pb.quantity, b.initial_count) AS current_population
+        FROM production_batches b
+        LEFT JOIN batch_unit_assignments bua
+          ON bua.organization_id = b.organization_id
+         AND bua.batch_id = b.id
+         AND bua.released_at IS NULL
+        LEFT JOIN population_balances pb
+          ON pb.organization_id = b.organization_id
+         AND pb.batch_id = b.id
+        WHERE b.organization_id = $1 AND b.id = $2
+        "#,
+    )
+    .bind(auth.organization_id.0)
+    .bind(id)
+    .fetch_one(&mut *tx)
+    .await
+    .map_err(|e| ApiError(map_sqlx_err(e)))?;
+
+    let samples: Vec<(DateTime<Utc>, Option<Decimal>)> = sqlx::query_as(
+        r#"
+        SELECT sampled_at, average_weight_g
+        FROM growth_samples
+        WHERE organization_id = $1 AND batch_id = $2
+        ORDER BY sampled_at DESC, created_at DESC
+        LIMIT 2
+        "#,
+    )
+    .bind(auth.organization_id.0)
+    .bind(id)
+    .fetch_all(&mut *tx)
+    .await
+    .map_err(|e| ApiError(map_sqlx_err(e)))?;
+
+    tx.commit().await.map_err(|e| ApiError(map_sqlx_err(e)))?;
+    let detail = assemble_batch_detail(row, &samples, Utc::now())?;
+    Ok(Json(detail))
 }
 
 #[utoipa::path(
@@ -620,6 +955,46 @@ pub async fn register_individual_tag<S: AppBackendState>(
 }
 
 #[utoipa::path(
+    get,
+    path = "/api/v1/batches/{id}/growth-samples",
+    params(("id" = Uuid, Path, description = "Batch ID")),
+    responses((status = 200, body = [GrowthSampleDto])),
+    tag = "Production"
+)]
+pub async fn list_growth_samples<S: AppBackendState>(
+    State(state): State<S>,
+    auth: AuthPrincipal,
+    Path(batch_id): Path<Uuid>,
+    Query(query): Query<PaginationQuery>,
+) -> Result<Json<Vec<GrowthSampleDto>>, ApiError> {
+    let limit = query.limit.unwrap_or(100).clamp(1, 200);
+    let mut tx = auth
+        .context()
+        .begin_tx(state.pool())
+        .await
+        .map_err(ApiError)?;
+    let rows: Vec<GrowthSampleDto> = sqlx::query_as(
+        r#"
+        SELECT id, batch_id, sampled_at, sample_count, total_sample_weight_g,
+               average_weight_g, average_length_cm, method, notes, version,
+               created_at, created_by, updated_at, updated_by
+        FROM growth_samples
+        WHERE organization_id = $1 AND batch_id = $2
+        ORDER BY sampled_at DESC, created_at DESC
+        LIMIT $3
+        "#,
+    )
+    .bind(auth.organization_id.0)
+    .bind(batch_id)
+    .bind(limit)
+    .fetch_all(&mut *tx)
+    .await
+    .map_err(|e| ApiError(map_sqlx_err(e)))?;
+    tx.commit().await.map_err(|e| ApiError(map_sqlx_err(e)))?;
+    Ok(Json(rows))
+}
+
+#[utoipa::path(
     post,
     path = "/api/v1/batches/{id}/growth-samples",
     params(("id" = Uuid, Path, description = "Batch ID")),
@@ -739,6 +1114,46 @@ pub async fn record_growth_sample<S: AppBackendState>(
             created_by,
         }),
     ))
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/v1/batches/{id}/outputs",
+    params(("id" = Uuid, Path, description = "Batch ID")),
+    responses((status = 200, body = [ProductionOutputDto])),
+    tag = "Production"
+)]
+pub async fn list_outputs<S: AppBackendState>(
+    State(state): State<S>,
+    auth: AuthPrincipal,
+    Path(batch_id): Path<Uuid>,
+    Query(query): Query<PaginationQuery>,
+) -> Result<Json<Vec<ProductionOutputDto>>, ApiError> {
+    let limit = query.limit.unwrap_or(100).clamp(1, 200);
+    let mut tx = auth
+        .context()
+        .begin_tx(state.pool())
+        .await
+        .map_err(ApiError)?;
+    let rows: Vec<ProductionOutputDto> = sqlx::query_as(
+        r#"
+        SELECT id, batch_id, stock_movement_id, occurred_at, output_type,
+               quantity, unit, average_weight_g, grade, notes, version,
+               created_at, created_by, updated_at, updated_by
+        FROM production_outputs
+        WHERE organization_id = $1 AND batch_id = $2
+        ORDER BY occurred_at DESC, created_at DESC
+        LIMIT $3
+        "#,
+    )
+    .bind(auth.organization_id.0)
+    .bind(batch_id)
+    .bind(limit)
+    .fetch_all(&mut *tx)
+    .await
+    .map_err(|e| ApiError(map_sqlx_err(e)))?;
+    tx.commit().await.map_err(|e| ApiError(map_sqlx_err(e)))?;
+    Ok(Json(rows))
 }
 
 #[utoipa::path(
@@ -885,7 +1300,11 @@ pub fn router<S: AppBackendState>() -> Router<S> {
             "/api/v1/batches",
             get(list_batches::<S>).post(create_batch::<S>),
         )
-        .route("/api/v1/batches/{id}", patch(update_batch::<S>))
+        .route("/api/v1/batches/summary", get(list_batch_summaries::<S>))
+        .route(
+            "/api/v1/batches/{id}",
+            get(get_batch::<S>).patch(update_batch::<S>),
+        )
         .route(
             "/api/v1/batches/{id}/stock-movements",
             post(record_stock_movement::<S>),
@@ -896,9 +1315,12 @@ pub fn router<S: AppBackendState>() -> Router<S> {
         )
         .route(
             "/api/v1/batches/{id}/growth-samples",
-            post(record_growth_sample::<S>),
+            get(list_growth_samples::<S>).post(record_growth_sample::<S>),
         )
-        .route("/api/v1/batches/{id}/outputs", post(record_output::<S>))
+        .route(
+            "/api/v1/batches/{id}/outputs",
+            get(list_outputs::<S>).post(record_output::<S>),
+        )
 }
 
 #[derive(OpenApi)]
@@ -906,25 +1328,34 @@ pub fn router<S: AppBackendState>() -> Router<S> {
     paths(
         list_batches,
         create_batch,
+        list_batch_summaries,
+        get_batch,
         update_batch,
         record_stock_movement,
         list_individual_tags,
         register_individual_tag,
+        list_growth_samples,
         record_growth_sample,
+        list_outputs,
         record_output
     ),
     components(schemas(
         CreateBatchRequest,
         UpdateBatchRequest,
         BatchDto,
+        BatchDetailDto,
+        CalculationResult<String>,
         StockMovementRequest,
         StockMovementResponse,
         RegisterTagRequest,
         IndividualTagDto,
+        GrowthSampleDto,
         CreateGrowthSampleRequest,
         GrowthSampleResponse,
+        ProductionOutputDto,
         CreateOutputRequest,
-        OutputResponse
+        OutputResponse,
+        ErrorEnvelope
     ))
 )]
 pub struct ProductionApi;

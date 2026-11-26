@@ -1,3 +1,6 @@
+use argon2::password_hash::rand_core::OsRng;
+use argon2::password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString};
+use argon2::Argon2;
 use axum::extract::{Path, Query, State};
 use axum::routing::{get, patch, post};
 use axum::{Json, Router};
@@ -144,6 +147,23 @@ impl From<AuditLogRow> for AuditLogDto {
     }
 }
 
+fn hash_password_sync(password: &str) -> Result<String, AppError> {
+    let salt = SaltString::generate(&mut OsRng);
+    let hash = Argon2::default()
+        .hash_password(password.as_bytes(), &salt)
+        .map_err(|e| AppError::Internal(format!("password hashing failed: {e}")))?;
+    Ok(hash.to_string())
+}
+
+fn verify_password_sync(password: &str, stored_hash: &str) -> bool {
+    let Ok(parsed_hash) = PasswordHash::new(stored_hash) else {
+        return false;
+    };
+    Argon2::default()
+        .verify_password(password.as_bytes(), &parsed_hash)
+        .is_ok()
+}
+
 #[utoipa::path(
     post,
     path = "/api/v1/auth/register",
@@ -155,17 +175,29 @@ pub async fn register<S: AppBackendState>(
     State(state): State<S>,
     Json(req): Json<RegisterRequest>,
 ) -> Result<(axum::http::StatusCode, Json<AuthTokenResponse>), ApiError> {
-    if req.email.trim().is_empty() || req.password.len() < 8 {
+    let email = req.email.trim().to_lowercase();
+    let display_name = req.display_name.trim().to_string();
+    if email.is_empty()
+        || display_name.is_empty()
+        || req.password.len() < 8
+        || req.password.len() > 1024
+    {
         return Err(ApiError(AppError::Validation(
-            "valid email and password (>= 8 chars) required".into(),
+            "valid email, display_name, and password (8..=1024 chars) required".into(),
         )));
     }
-    let password_hash = format!("plain_placeholder:{}", req.password);
+
+    let plain_password = req.password;
+    let password_hash = tokio::task::spawn_blocking(move || hash_password_sync(&plain_password))
+        .await
+        .map_err(|e| ApiError(AppError::Internal(format!("password task failed: {e}"))))?
+        .map_err(ApiError)?;
+
     let user_id: Uuid = sqlx::query_scalar(
         "INSERT INTO users (email, display_name, password_hash) VALUES ($1, $2, $3) RETURNING id",
     )
-    .bind(req.email.trim().to_lowercase())
-    .bind(req.display_name.trim())
+    .bind(&email)
+    .bind(&display_name)
     .bind(password_hash)
     .fetch_one(state.pool())
     .await
@@ -173,14 +205,14 @@ pub async fn register<S: AppBackendState>(
 
     let token = state
         .jwt()
-        .issue_token(UserId(user_id), &req.email)
+        .issue_token(UserId(user_id), &email)
         .map_err(ApiError)?;
     Ok((
         axum::http::StatusCode::CREATED,
         Json(AuthTokenResponse {
             access_token: token,
             user_id,
-            email: req.email,
+            email,
         }),
     ))
 }
@@ -196,21 +228,37 @@ pub async fn login<S: AppBackendState>(
     State(state): State<S>,
     Json(req): Json<LoginRequest>,
 ) -> Result<Json<AuthTokenResponse>, ApiError> {
+    let email_input = req.email.trim().to_lowercase();
+    if email_input.is_empty() || req.password.is_empty() || req.password.len() > 1024 {
+        return Err(ApiError(AppError::Unauthorized(
+            "invalid credentials".into(),
+        )));
+    }
+
     let row: Option<(Uuid, String, Option<String>)> = sqlx::query_as(
         "SELECT id, email, password_hash FROM users WHERE email = $1 AND status = 'active'",
     )
-    .bind(req.email.trim().to_lowercase())
+    .bind(&email_input)
     .fetch_optional(state.pool())
     .await
     .map_err(|e| ApiError(map_sqlx_err(e)))?;
 
-    let Some((user_id, email, hash)) = row else {
+    let Some((user_id, email, Some(stored_hash))) = row else {
         return Err(ApiError(AppError::Unauthorized(
             "invalid credentials".into(),
         )));
     };
-    let expected = format!("plain_placeholder:{}", req.password);
-    if hash.as_deref() != Some(expected.as_str()) {
+
+    let plain_password = req.password;
+    let valid =
+        tokio::task::spawn_blocking(move || verify_password_sync(&plain_password, &stored_hash))
+            .await
+            .map_err(|e| {
+                ApiError(AppError::Internal(format!(
+                    "password verify task failed: {e}"
+                )))
+            })?;
+    if !valid {
         return Err(ApiError(AppError::Unauthorized(
             "invalid credentials".into(),
         )));
@@ -721,3 +769,30 @@ pub fn router<S: AppBackendState>() -> Router<S> {
     ))
 )]
 pub struct TenantApi;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_argon2id_hash_and_verify_roundtrip() {
+        let hash1 = hash_password_sync("RahasiaTernak!2026").unwrap();
+        let hash2 = hash_password_sync("RahasiaTernak!2026").unwrap();
+
+        assert!(hash1.starts_with("$argon2id$"));
+        assert_ne!(hash1, hash2, "random salt should produce unique hashes");
+        assert!(verify_password_sync("RahasiaTernak!2026", &hash1));
+        assert!(verify_password_sync("RahasiaTernak!2026", &hash2));
+        assert!(!verify_password_sync("SalahPassword!2026", &hash1));
+    }
+
+    #[test]
+    fn test_legacy_placeholder_and_malformed_hashes_rejected() {
+        assert!(!verify_password_sync(
+            "secret123",
+            "plain_placeholder:secret123"
+        ));
+        assert!(!verify_password_sync("secret123", ""));
+        assert!(!verify_password_sync("secret123", "not-a-valid-phc-hash"));
+    }
+}
