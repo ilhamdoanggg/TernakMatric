@@ -1,10 +1,14 @@
 use chrono::Utc;
-use infra_db::with_organization;
+use infra_db::{
+    resolve_custom_log_dir, sync_daily_logs_to_db, with_organization, DailyLogAppender,
+    RealtimeLogBroadcaster,
+};
 use mod_calculation::{compute_biomass_kg, CohortBiomassInput};
 use rust_decimal::Decimal;
-use shared_kernel::OrganizationId;
+use shared_kernel::{AppError, OrganizationId};
 use sqlx::postgres::PgPoolOptions;
 use sqlx::PgPool;
+use std::path::Path;
 use std::time::Duration;
 use uuid::Uuid;
 
@@ -124,12 +128,22 @@ async fn run_vaccination_reminders_and_alerts(pool: &PgPool) -> Result<(), sqlx:
     Ok(())
 }
 
+async fn run_daily_log_archive(pool: &PgPool, log_dir: &Path) -> Result<usize, AppError> {
+    let synced = sync_daily_logs_to_db(pool, log_dir, "worker", None).await?;
+    Ok(synced.len())
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     infra_db::load_env_files();
 
+    let log_dir = resolve_custom_log_dir();
+    let broadcaster = RealtimeLogBroadcaster::new(100);
+    let appender = DailyLogAppender::new(&log_dir, broadcaster);
+
     tracing_subscriber::fmt()
         .with_env_filter(std::env::var("RUST_LOG").unwrap_or_else(|_| "worker=info".into()))
+        .with_writer(std::sync::Mutex::new(appender))
         .init();
 
     let db_url = std::env::var("DATABASE_URL").unwrap_or_else(|_| {
@@ -151,6 +165,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         if let Err(err) = run_vaccination_reminders_and_alerts(&pool).await {
             tracing::warn!(error = %err, "vaccine reminder & alert cycle skipped/failed");
+        }
+        if let Err(err) = run_daily_log_archive(&pool, &log_dir).await {
+            tracing::warn!(error = %err, "daily log archive sync cycle skipped/failed");
         }
     }
 }

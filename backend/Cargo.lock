@@ -32,6 +32,7 @@ version = "0.1.0"
 dependencies = [
  "axum",
  "chrono",
+ "futures-core",
  "infra-auth",
  "infra-db",
  "mod-calculation",
@@ -875,7 +876,9 @@ dependencies = [
  "serde_json",
  "shared-kernel",
  "sqlx",
+ "tokio",
  "tracing",
+ "utoipa",
  "uuid",
 ]
 

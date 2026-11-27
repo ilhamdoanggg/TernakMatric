@@ -10,7 +10,7 @@ Kamu adalah coding agent di repository ini. Baca aturan ini sebelum mengubah kod
 | --- | --- |
 | Produk, requirement, aturan bisnis | `docs/01-*` s.d. `docs/12-*`, `docs/decisions/001-003`, `docs/notes/note-1..3` |
 | Nama tabel/kolom/schema | `backend/migrations/`, `docs/data/DATA_DICTIONARY.md`, `docs/06-DATABASE-ERD.md` |
-| Schema yang benar-benar terpasang | `backend/migrations/` (`2026112401`–`2026112409`) |
+| Schema yang benar-benar terpasang | `backend/migrations/` (`2026112401`–`2026112410`) |
 | Utang teknis migrasi | `docs/notes/note-4-migration-audit.md` |
 | Arsitektur & batas crate | `docs/07-SYSTEM-ARCHITECTURE.md`, `docs/09-REPOSITORY-STRUCTURE.md` |
 | Kontrak API | Anotasi Utoipa di handler Rust → `packages/api-contracts/openapi/ternakmatric.v1.json` → `generated/typescript/schema.d.ts` → client `packages/api-contracts/src/index.ts` |
@@ -26,7 +26,7 @@ Bahasa dokumentasi dan catatan: **Indonesia**. Identifier kode, nama file, dan p
 
 ```text
 backend/
-  migrations/              # SQLx/Postgres migrations (tergabung lengkap 2026112401–2026112409)
+  migrations/              # SQLx/Postgres migrations (tergabung lengkap 2026112401–2026112410)
   crates/
     shared-kernel/         # tipe domain murni, AppError, ID newtype
     mod-calculation/       # engine kalkulasi murni, tanpa DB/HTTP/clock
@@ -77,7 +77,7 @@ apps/mobile/               # mobile offline-first (belum fokus utama)
 
 7. **Migrasi yang sudah di-apply bersifat immutable.**
    - Jangan mengedit file migrasi lama. Tambah file baru dengan nomor berikutnya.
-   - Migration terbaru saat ini: `2026112409_rls_triggers_hardening.sql`; berikutnya `2026112410_...`.
+   - Migration terbaru saat ini: `2026112410_system_log_archives.sql`; berikutnya `2026112411_...`.
    - Sebelum menyentuh migrasi, baca `docs/notes/note-4-migration-audit.md`.
 
 8. **Role aplikasi bukan superuser dan tidak punya `BYPASSRLS`.**
@@ -302,9 +302,12 @@ apps/web/
   src/entry-server.ts        # renderToString + preload links
   src/router/index.ts        # memory history saat SSR, web history di browser
   src/lib/api.ts             # createWebApiClient()
+  src/types/                 # tipe domain web, UI filter/status, & re-export @ternakmatric/api-contracts
+  src/services/              # client service stateless (logService, authService)
+  src/stores/                # state management Composition API (logStore, authStore)
   src/components/            # komponen UI reusable
-  src/features/<feature>/    # komponen spesifik fitur
-  src/views/                 # halaman level route
+  src/features/<feature>/    # komponen spesifik fitur (dashboard, logs)
+  src/views/                 # halaman level route (DashboardView, LogsDashboardView)
 ```
 
 View baru didaftarkan di `src/router/index.ts`. Komponen yang hanya dipakai satu fitur diletakkan di `src/features/<feature>/`, bukan di `src/components/`.
@@ -329,6 +332,11 @@ View baru didaftarkan di `src/router/index.ts`. Komponen yang hanya dipakai satu
    - Data yang harus tampil di HTML server diambil lewat `onServerPrefetch` atau di `entry-server.ts`, bukan `onMounted`.
 10. Jangan menaruh secret di variabel `VITE_*`; semua `VITE_*` terekspos ke browser.
 11. Aksesibilitas: gunakan elemen semantik, label form, `alt` pada gambar, dan pastikan tabel serta navigasi bisa dioperasikan dengan keyboard.
+12. Pemisahan fungsi & tanggung jawab (Separation of Concerns):
+    - `src/types/`: Berisi definisi tipe TypeScript lokal UI dan re-export aman dari `@ternakmatric/api-contracts`.
+    - `src/services/`: Berisi class/fungsi komunikasi API dan streaming data (stateless) yang membungkus `createWebApiClient()`. Komponen/views tidak boleh memanggil `fetch` atau streaming chunk secara manual.
+    - `src/stores/`: Mengelola state reaktif aplikasi (`ref`, `computed`) dan aksi bisnis (misal `useLogStore`, `useAuthStore`).
+    - `src/features/` & `src/views/`: Komponen murni presentational yang mengonsumsi state dan actions dari store.
 
 ### Verifikasi web
 

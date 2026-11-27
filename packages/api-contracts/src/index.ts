@@ -41,6 +41,11 @@ export interface CalculationResult<T> {
 // System & Error
 export type HealthResponse = Schemas["HealthResponse"];
 export type ErrorEnvelope = Schemas["ErrorEnvelope"];
+export type SystemLogArchiveDto = Schemas["SystemLogArchiveDto"];
+export type SystemLogContentDto = Schemas["SystemLogContentDto"];
+export type SyncLogsResponse = Schemas["SyncLogsResponse"];
+export type ListLogsQuery = operations["list_system_logs"]["parameters"]["query"];
+export type LogContentQuery = operations["get_system_log_content"]["parameters"]["query"];
 
 // Tenant & Auth
 export type RegisterRequest = Schemas["RegisterRequest"];
@@ -249,7 +254,7 @@ export class ApiClientError extends Error {
 }
 
 function buildQueryString(
-  params?: Record<string, string | number | undefined | null>,
+  params?: Record<string, string | number | boolean | undefined | null>,
 ): string {
   if (!params) {
     return "";
@@ -307,7 +312,7 @@ export class TernakMatricApiClient {
 
   private get<Res>(
     path: string,
-    query?: Record<string, string | number | undefined | null>,
+    query?: Record<string, string | number | boolean | undefined | null>,
   ): Promise<Res> {
     return this.request<Res>(`${path}${buildQueryString(query)}`, {
       method: "GET",
@@ -805,5 +810,38 @@ export class TernakMatricApiClient {
 
   listSyncConflicts(): Promise<SyncConflictRecord[]> {
     return this.get<SyncConflictRecord[]>("/api/v1/sync/conflicts");
+  }
+
+  // System Logs
+  listSystemLogs(query?: ListLogsQuery): Promise<SystemLogArchiveDto[]> {
+    return this.get<SystemLogArchiveDto[]>("/api/v1/system/logs", {
+      service_name: query?.service_name,
+      status: query?.status,
+      limit: query?.limit,
+    });
+  }
+
+  getSystemLogContent(
+    fileName: string,
+    query?: LogContentQuery,
+  ): Promise<SystemLogContentDto> {
+    return this.get<SystemLogContentDto>(
+      `/api/v1/system/logs/${encodeURIComponent(fileName)}/content`,
+      {
+        limit: query?.limit,
+        tail: query?.tail,
+      },
+    );
+  }
+
+  syncSystemLogs(): Promise<SyncLogsResponse> {
+    return this.post<Record<string, never>, SyncLogsResponse>(
+      "/api/v1/system/logs/sync",
+      {},
+    );
+  }
+
+  getLogStreamUrl(): string {
+    return `${this.baseUrl}/api/v1/system/logs/stream`;
   }
 }

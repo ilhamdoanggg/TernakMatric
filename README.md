@@ -8,11 +8,11 @@ Smart Animal Production Management Platform — SaaS multi-tenant untuk ikan, un
 - [`backend/`](backend/): Rust Cargo Workspace (Axum + SQLx + Utoipa modular monolith, seluruh SQL schema & seed di [`backend/migrations/`](backend/migrations/), API server, background worker)
 - [`deploy/`](deploy/): Runner migrasi database dan provisioning role aplikasi non-superuser ([`deploy/README.md`](deploy/README.md))
 - [`packages/api-contracts/`](packages/api-contracts/): Spesifikasi OpenAPI dari Utoipa dan TypeScript API client ([`packages/api-contracts/README.md`](packages/api-contracts/README.md))
-- [`apps/web/`](apps/web/): Dashboard analitik berbasis Vue 3 SSR + TypeScript (Vite + Tailwind)
+- [`apps/web/`](apps/web/): Dashboard analitik berbasis Vue 3 SSR + TypeScript (Vite + Tailwind) dengan arsitektur terpisah: `types/`, `services/`, `stores/`, `components/`, `features/`, dan `views/`
 - [`apps/mobile/`](apps/mobile/): Aplikasi mobile field input offline-first (Flutter + SQLite) ([`apps/mobile/README.md`](apps/mobile/README.md))
 - [`.agents/`](.agents/): Skill dan workflow runbook untuk coding agent (referensi aturan utama di [`AGENTS.md`](AGENTS.md))
 
-Status: fondasi produk, schema tergabung (`2026112401`–`2026112409`), dan backend sudah terbentuk. Status *production-readiness* migrasi tercatat di [`docs/notes/note-4-migration-audit.md`](docs/notes/note-4-migration-audit.md).
+Status: fondasi produk, schema tergabung (`2026112401`–`2026112410`), dan backend sudah terbentuk. Status *production-readiness* migrasi tercatat di [`docs/notes/note-4-migration-audit.md`](docs/notes/note-4-migration-audit.md).
 
 ## Perintah Cepat
 
@@ -103,3 +103,22 @@ flutter test
 flutter run --dart-define-from-file=.env.example
 Pop-Location
 ```
+
+---
+
+## Logging, Monitoring & Database Archive
+
+Backend TernakMatric dilengkapi sistem logging harian dan dashboard realtime:
+
+1. **Daily Rolling Log File**:
+   - Berkas log berotasi otomatis setiap hari dengan format nama `tanggal-bulan-tahun.log` (contoh: `27-11-2026.log`).
+   - Lokasi folder log dapat dikustomisasi via environment variable `APP_LOG_DIR` atau `LOG_DIR` (default: `logs/`).
+2. **Database Archive Tracking (`system_log_archives`)**:
+   - Metadata berkas log (tanggal, service, path, ukuran byte, jumlah baris, checksum, dan status) dicatat di PostgreSQL melalui migrasi `2026112410_system_log_archives.sql`.
+   - Disinkronkan secara otomatis oleh background `worker` dan dapat disinkronkan manual via endpoint `POST /api/v1/system/logs/sync`.
+3. **Realtime Log Stream (SSE)**:
+   - Endpoint `GET /api/v1/system/logs/stream` menyediakan streaming log realtime Server-Sent Events untuk operator/admin (`ORG_OWNER` / `ORG_ADMIN`).
+4. **Web Dashboard (`/logs`)**:
+   - Tampilan live console log realtime (`LiveLogTerminal`), daftar arsip berkas database (`LogArchiveList`), dan modal viewer pembaca isi berkas log (`LogContentModal`).
+   - Kode tersusun rapi dengan pemisahan tanggung jawab: `src/types/`, `src/services/`, dan `src/stores/`.
+

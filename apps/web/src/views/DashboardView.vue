@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { RouterLink } from "vue-router";
 import MetricCard from "@/components/MetricCard.vue";
 import SpeciesOverviewTable from "@/features/dashboard/SpeciesOverviewTable.vue";
 </script>
@@ -14,9 +15,18 @@ import SpeciesOverviewTable from "@/features/dashboard/SpeciesOverviewTable.vue"
           Dashboard Produksi &amp; Analitik
         </h1>
       </div>
-      <span class="rounded-full border border-slate-800 bg-slate-900 px-3 py-1 text-xs text-slate-300">
-        Vue 3 SSR + Calculation Engine v1 (FCR · ADG · SGR · HPP)
-      </span>
+      <div class="flex items-center gap-3">
+        <RouterLink
+          to="/logs"
+          class="rounded-lg border border-slate-700 bg-slate-800 px-3.5 py-1.5 text-xs font-semibold text-emerald-400 hover:bg-slate-700 hover:text-emerald-300 transition-colors flex items-center gap-1.5"
+        >
+          <span class="inline-block h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          System Logs &rarr;
+        </RouterLink>
+        <span class="rounded-full border border-slate-800 bg-slate-900 px-3 py-1 text-xs text-slate-300">
+          Vue 3 SSR + Calculation Engine v1 (FCR &middot; ADG &middot; SGR &middot; HPP)
+        </span>
+      </div>
     </header>
 
     <section class="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
