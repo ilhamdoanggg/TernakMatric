@@ -38,7 +38,7 @@ Mobile dipakai operator di lapangan/kandang/kolam dan harus tetap bisa mencatat 
 
 - Saat ini endpoint sync berada di `infra-auth/src/sync.rs` dan dirangkai di `bins/api-server`; outbox berada di `infra-db::OutboxWriter`. Crate `mod-sync`/`infra-outbox` belum ada.
 - Migration `2026112407_init_offline_sync.sql` berisi `devices`, `sync_operations`, `sync_conflicts`, indeks `(organization_id, status, received_at)`, serta constraint idempotency.
-- `apps/mobile/src/storage` = SQLite lokal; `apps/mobile/src/sync` = queue + retry + cursor; `apps/mobile/src/offline` = UI untuk operasi pending dan konflik.
+- `apps/mobile/lib/storage` = SQLite lokal; `apps/mobile/lib/sync` = queue + retry + cursor; `apps/mobile/lib/offline` = kebijakan dan UI untuk operasi pending dan konflik.
 - CI wajib menguji: retry dua kali tetap satu transaksi, dua command konkuren tidak membuat saldo negatif atau melebihi kapasitas unit, command stale menghasilkan conflict, dan konflik ledger/finance tidak pernah diselesaikan dengan `client_wins`.
 - Endpoint sync harus mengikuti kontrak `/api/v1` dan idempotency key terdokumentasi di `08-API-SPECIFICATION.md` / OpenAPI.
 
@@ -47,6 +47,6 @@ Mobile dipakai operator di lapangan/kandang/kolam dan harus tetap bisa mencatat 
 Keputusan di atas tetap berlaku dengan penyesuaian berikut:
 
 - Field yang dipakai migrasi adalah `device_occurred_at`, bukan `occurred_at` (`2026112407_init_offline_sync.sql`).
-- Daftar entity yang dilarang `client_wins` sudah memuat `population_balances` dan `inventory_balances` di `2026112407_init_offline_sync.sql`, `infra-auth/src/sync.rs`, serta `apps/mobile/src/offline/conflictPolicy.ts`.
+- Daftar entity yang dilarang `client_wins` sudah memuat `population_balances` dan `inventory_balances` di `2026112407_init_offline_sync.sql`, `infra-auth/src/sync.rs`, serta `apps/mobile/lib/offline/conflict_policy.dart`.
 - Worker saat ini menjalankan snapshot biomassa dan reminder vaksin; pemrosesan queue sync/rekonsiliasi ledger belum diimplementasikan.
 - Status lengkap dan riwayat perbaikan ada di [`../notes/note-4-migration-audit.md`](../notes/note-4-migration-audit.md).

@@ -15,7 +15,7 @@ Dokumen ini mendeskripsikan struktur repository **sebagaimana adanya**, bukan ra
 | Modular monolith, bukan microservices | `docs/notes/note-1.md`, `docs/notes/note-2.md` | Satu workspace di `backend/`, bukan `services/*` per domain |
 | Backend Rust + Axum + Utoipa; SQLx | `docs/notes/note-2.md`, `docs/notes/note-3.md` | OpenAPI diekspor dari anotasi handler ke `ternakmatric.v1.json` |
 | Kontrak API kanonik | Utoipa → JSON → TypeScript | `packages/api-contracts/openapi/ternakmatric.v1.json` |
-| Mobile React Native + Expo + SQLite, offline-first | `docs/notes/note-2.md`, `docs/notes/note-3.md` | `apps/mobile/` dengan lapisan penyimpanan dan sinkronisasi lokal |
+| Mobile Flutter + SQLite, offline-first | `docs/notes/note-2.md`, `docs/notes/note-3.md`, `docs/notes/note-5.md` | `apps/mobile/` dengan lapisan penyimpanan dan sinkronisasi lokal |
 | `organization_id` sebagai tenant boundary | `docs/notes/note-3.md`, [ADR 001](decisions/001-tenant-boundary.md) | `infra-db`, RLS, composite FK |
 | Multi-species & multi-unit | `docs/notes/note-2.md`, `docs/notes/note-3.md` | `mod-enclosure`, `mod-species`, `mod-production` generik |
 | Inventory dicatat dengan transaksi audit | `docs/notes/note-3.md`, [ADR 002](decisions/002-offline-sync.md) | `warehouses`, `inventory_transactions`, `inventory_balances` di migrasi; saat ini dilayani `mod-feeding` |
@@ -109,7 +109,7 @@ TernakMatric/
 │
 └── apps/
     ├── web/                          # Vue 3 SSR + TypeScript (Vite)
-    └── mobile/                       # React Native + Expo + SQLite
+    └── mobile/                       # Flutter + SQLite
 ```
 
 ### Modul yang direncanakan tetapi belum berupa crate

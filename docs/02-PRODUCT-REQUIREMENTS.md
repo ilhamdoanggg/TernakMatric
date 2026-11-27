@@ -10,7 +10,7 @@
 | **Tipe Produk** | B2B SaaS Multi-Tenant |
 | **Target Pengguna** | Peternak UMKM, peternakan menengah–besar, perusahaan integrasi, pengelola banyak farm |
 | **Cakupan Spesies** | `fish`, `crustacean`, `mollusk`, `poultry`, `mammal`, `reptile`, `insect`, `other` |
-| **Platform** | Web Dashboard (Vue 3 + TypeScript / Vite) & Mobile Field App (React Native + Expo + SQLite) |
+| **Platform** | Web Dashboard (Vue 3 + TypeScript / Vite) & Mobile Field App (Flutter + SQLite) |
 | **Backend & DB** | Rust Modular Monolith (Axum + SQLx + Utoipa) + PostgreSQL 16 (RLS Multi-Tenant) |
 | **Strategi Rilis** | MVP (Operasional & Ledger Inti) → V1 (BI, Forecasting & Rekonsiliasi Lanjutan) → V2 (IoT & AI) |
 
