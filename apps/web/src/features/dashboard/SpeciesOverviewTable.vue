@@ -1,16 +1,5 @@
 <script setup lang="ts">
-import type { SpeciesCategory } from "@ternakmatric/api-contracts";
-
-interface CohortPreviewRow {
-  batchCode: string;
-  species: string;
-  category: SpeciesCategory;
-  enclosure: string;
-  population: number;
-  growthMetric: string;
-  fcr: string;
-  hppPerKg: string;
-}
+import type { CohortPreviewRow } from "@/types/dashboard";
 
 const sampleCohorts: CohortPreviewRow[] = [
   {

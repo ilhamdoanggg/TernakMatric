@@ -6,6 +6,7 @@ edition.workspace = true
 [dependencies]
 axum.workspace = true
 chrono.workspace = true
+futures-core.workspace = true
 infra-auth.workspace = true
 infra-db.workspace = true
 mod-calculation.workspace = true

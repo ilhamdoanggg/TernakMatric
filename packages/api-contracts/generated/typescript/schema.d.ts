@@ -660,6 +660,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/system/logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_system_logs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system/logs/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["stream_system_logs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system/logs/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["sync_system_logs"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system/logs/{file_name}/content": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_system_log_content"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/unit-types": {
         parameters: {
             query?: never;
@@ -1454,6 +1518,16 @@ export interface components {
             metric_value: string;
             unit: string;
         };
+        ListLogsQuery: {
+            /** Format: int64 */
+            limit?: number | null;
+            service_name?: string | null;
+            status?: string | null;
+        };
+        LogContentQuery: {
+            limit?: number | null;
+            tail?: boolean | null;
+        };
         LoginRequest: {
             email: string;
             password: string;
@@ -1802,6 +1876,11 @@ export interface components {
             /** Format: uuid */
             sync_operation_id: string;
         };
+        SyncLogsResponse: {
+            log_dir: string;
+            scanned_files: number;
+            synced_archives: number;
+        };
         /** @enum {string} */
         SyncOperationType: "create" | "update" | "delete";
         SyncPullResponse: {
@@ -1829,6 +1908,37 @@ export interface components {
         };
         /** @enum {string} */
         SyncStatus: "pending" | "applied" | "rejected" | "conflict";
+        SystemLogArchiveDto: {
+            /** Format: date-time */
+            archived_at: string;
+            checksum_sha256?: string | null;
+            /** Format: date-time */
+            created_at: string;
+            file_name: string;
+            file_path: string;
+            /** Format: int64 */
+            file_size_bytes: number;
+            /** Format: uuid */
+            id: string;
+            /** Format: int64 */
+            line_count: number;
+            /** Format: date */
+            log_date: string;
+            /** Format: uuid */
+            organization_id?: string | null;
+            service_name: string;
+            status: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        SystemLogContentDto: {
+            file_name: string;
+            file_path: string;
+            is_truncated: boolean;
+            lines: string[];
+            returned_lines: number;
+            total_lines: number;
+        };
         UnitTypeDto: {
             code: string;
             description?: string | null;
@@ -3254,6 +3364,96 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SyncPushResponse"];
+                };
+            };
+        };
+    };
+    list_system_logs: {
+        parameters: {
+            query?: {
+                /** @description Filter by service name */
+                service_name?: string;
+                /** @description Filter by status (active/archived) */
+                status?: string;
+                /** @description Page limit (1..200) */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SystemLogArchiveDto"][];
+                };
+            };
+        };
+    };
+    stream_system_logs: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Server-Sent Events text/event-stream with realtime log lines */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    sync_system_logs: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SyncLogsResponse"];
+                };
+            };
+        };
+    };
+    get_system_log_content: {
+        parameters: {
+            query?: {
+                /** @description Max lines to return (1..2000) */
+                limit?: number;
+                /** @description Return last N lines instead of first N lines */
+                tail?: boolean;
+            };
+            header?: never;
+            path: {
+                /** @description Log file name (e.g. 27-11-2026.log) */
+                file_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SystemLogContentDto"];
                 };
             };
         };
