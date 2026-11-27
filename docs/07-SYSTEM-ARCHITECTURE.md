@@ -11,7 +11,7 @@ TernakMatric dibangun sebagai **Modular Monolith** menggunakan satu **Rust Cargo
 ```mermaid
 flowchart LR
     Web["Web Dashboard (Vue 3 + TS)"] --> API["api-server (Axum + Utoipa)"]
-    Mobile["Mobile App (Expo + SQLite)"] -->|Sync Push & Pull| API
+    Mobile["Mobile App (Flutter + SQLite)"] -->|Sync Push & Pull| API
     IoT["IoT Gateway V2 (HTTP Webhook)"] -.-> API
 
     API --> Auth["infra-auth (JWT, RBAC, Idempotency)"]
@@ -61,9 +61,9 @@ Lihat [ADR 001](decisions/001-tenant-boundary.md):
 
 Lihat [ADR 002](decisions/002-offline-sync.md):
 - **Client (`apps/mobile`)**:
-  - Data master dan catatan operasional disimpan lokal di SQLite (`src/storage/`).
-  - Mutasi offline dimasukkan ke tabel antrean lokal (`src/sync/`) sebagai command dengan `client_operation_id` (UUID v4 yang dibuat sekali di perangkat) dan `base_version`.
-  - Layar resolusi konflik (`src/offline/`) menampilkan command berstatus `conflict` atau `rejected` beserta snapshot server.
+  - Data master dan catatan operasional disimpan lokal di SQLite (`lib/storage/`).
+  - Mutasi offline dimasukkan ke tabel antrean lokal (`lib/sync/`) sebagai command dengan `client_operation_id` (UUID v4 yang dibuat sekali di perangkat) dan `base_version`.
+  - Kebijakan & layar resolusi konflik (`lib/offline/`) menampilkan command berstatus `conflict` atau `rejected` beserta snapshot server.
 - **Server (`infra-auth` + endpoint `/api/v1/sync/*`)**:
   - `POST /api/v1/sync/push` memproses setiap command secara idempoten dengan constraint unik `(organization_id, device_id, client_operation_id)`.
   - Jika `base_version` lebih kecil dari versi server saat ini, transaksi ditolak ke `sync_conflicts` tanpa menimpa data server.
@@ -76,4 +76,4 @@ Lihat [ADR 002](decisions/002-offline-sync.md):
 
 1. Setiap handler dan DTO di `crates/mod-*` menggunakan anotasi `utoipa::ToSchema` dan `#[utoipa::path(...)]`.
 2. `api-server --export-openapi` mengekspor spesifikasi OpenAPI 3.1 ke `packages/api-contracts/openapi/ternakmatric.v1.json`.
-3. Paket `@ternakmatric/api-contracts` menyediakan tipe TypeScript dan client HTTP terketik untuk `apps/web` dan `apps/mobile`.
+3. Paket `@ternakmatric/api-contracts` menyediakan tipe TypeScript dan client HTTP terketik untuk `apps/web`, sedangkan `apps/mobile` (Flutter) mengonsumsi skema OpenAPI yang sama melalui model Dart di `apps/mobile/lib/core/api/`.

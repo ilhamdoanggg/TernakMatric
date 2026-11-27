@@ -1,5 +1,5 @@
-use axum::extract::{Path, State};
-use axum::routing::{get, post};
+use axum::extract::{Path, Query, State};
+use axum::routing::get;
 use axum::{Json, Router};
 use chrono::{DateTime, NaiveDate, Utc};
 use infra_auth::{ApiError, AppBackendState, AuthPrincipal, Permission};
@@ -11,8 +11,36 @@ use mod_calculation::{
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use shared_kernel::AppError;
+use std::collections::HashMap;
 use utoipa::{OpenApi, ToSchema};
 use uuid::Uuid;
+
+#[derive(Debug, Serialize, Deserialize, ToSchema, sqlx::FromRow)]
+pub struct ExpenseCategoryDto {
+    pub id: Uuid,
+    pub organization_id: Option<Uuid>,
+    pub code: String,
+    pub name: String,
+    pub is_system: bool,
+    pub created_at: DateTime<Utc>,
+    pub created_by: Option<Uuid>,
+    pub updated_at: DateTime<Utc>,
+    pub updated_by: Option<Uuid>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ExpenseQuery {
+    pub batch_id: Option<Uuid>,
+    pub farm_id: Option<Uuid>,
+    pub category_id: Option<Uuid>,
+    pub limit: Option<i64>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SaleQuery {
+    pub batch_id: Option<Uuid>,
+    pub limit: Option<i64>,
+}
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct CreateExpenseRequest {
@@ -31,6 +59,7 @@ pub struct ExpenseDto {
     pub id: Uuid,
     pub batch_id: Option<Uuid>,
     pub farm_id: Option<Uuid>,
+    pub category_id: Option<Uuid>,
     pub expense_date: NaiveDate,
     pub description: String,
     pub quantity: Decimal,
@@ -41,6 +70,50 @@ pub struct ExpenseDto {
     pub created_by: Option<Uuid>,
     pub updated_at: DateTime<Utc>,
     pub updated_by: Option<Uuid>,
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema, sqlx::FromRow)]
+pub struct SaleItemDto {
+    pub id: Uuid,
+    pub sale_id: Uuid,
+    pub production_output_id: Option<Uuid>,
+    pub description: String,
+    pub quantity: Decimal,
+    pub unit: String,
+    pub unit_price: Decimal,
+    pub line_total: Decimal,
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct SaleDto {
+    pub id: Uuid,
+    pub batch_id: Uuid,
+    pub sale_date: NaiveDate,
+    pub buyer_name: Option<String>,
+    pub currency: String,
+    pub notes: Option<String>,
+    pub total_amount: Decimal,
+    pub items: Vec<SaleItemDto>,
+    pub version: i32,
+    pub created_at: DateTime<Utc>,
+    pub created_by: Option<Uuid>,
+    pub updated_at: DateTime<Utc>,
+    pub updated_by: Option<Uuid>,
+}
+
+#[derive(sqlx::FromRow)]
+struct SaleRow {
+    id: Uuid,
+    batch_id: Uuid,
+    sale_date: NaiveDate,
+    buyer_name: Option<String>,
+    currency: String,
+    notes: Option<String>,
+    version: i32,
+    created_at: DateTime<Utc>,
+    created_by: Option<Uuid>,
+    updated_at: DateTime<Utc>,
+    updated_by: Option<Uuid>,
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
@@ -82,6 +155,81 @@ pub struct BatchFinancialSummaryResponse {
 }
 
 #[utoipa::path(
+    get,
+    path = "/api/v1/finance/expense-categories",
+    responses((status = 200, body = [ExpenseCategoryDto])),
+    tag = "Finance & HPP"
+)]
+pub async fn list_expense_categories<S: AppBackendState>(
+    State(state): State<S>,
+    auth: AuthPrincipal,
+) -> Result<Json<Vec<ExpenseCategoryDto>>, ApiError> {
+    let mut tx = auth
+        .context()
+        .begin_tx(state.pool())
+        .await
+        .map_err(ApiError)?;
+    let rows: Vec<ExpenseCategoryDto> = sqlx::query_as(
+        r#"
+        SELECT id, organization_id, code, name, is_system,
+               created_at, created_by, updated_at, updated_by
+        FROM expense_categories
+        WHERE organization_id IS NULL OR organization_id = $1
+        ORDER BY is_system DESC, name ASC
+        "#,
+    )
+    .bind(auth.organization_id.0)
+    .fetch_all(&mut *tx)
+    .await
+    .map_err(|e| ApiError(map_sqlx_err(e)))?;
+    tx.commit().await.map_err(|e| ApiError(map_sqlx_err(e)))?;
+    Ok(Json(rows))
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/v1/finance/expenses",
+    responses((status = 200, body = [ExpenseDto])),
+    tag = "Finance & HPP"
+)]
+pub async fn list_expenses<S: AppBackendState>(
+    State(state): State<S>,
+    auth: AuthPrincipal,
+    Query(query): Query<ExpenseQuery>,
+) -> Result<Json<Vec<ExpenseDto>>, ApiError> {
+    auth.require(Permission::AnalyticsRead).map_err(ApiError)?;
+    let limit = query.limit.unwrap_or(100).clamp(1, 200);
+    let mut tx = auth
+        .context()
+        .begin_tx(state.pool())
+        .await
+        .map_err(ApiError)?;
+    let rows: Vec<ExpenseDto> = sqlx::query_as(
+        r#"
+        SELECT id, batch_id, farm_id, category_id, expense_date, description, quantity, unit_cost, total_amount,
+               currency::text AS currency, created_at, created_by, updated_at, updated_by
+        FROM expenses
+        WHERE organization_id = $1
+          AND ($2::uuid IS NULL OR batch_id = $2)
+          AND ($3::uuid IS NULL OR farm_id = $3)
+          AND ($4::uuid IS NULL OR category_id = $4)
+        ORDER BY expense_date DESC, created_at DESC
+        LIMIT $5
+        "#,
+    )
+    .bind(auth.organization_id.0)
+    .bind(query.batch_id)
+    .bind(query.farm_id)
+    .bind(query.category_id)
+    .bind(limit)
+    .fetch_all(&mut *tx)
+    .await
+    .map_err(|e| ApiError(map_sqlx_err(e)))?;
+    tx.commit().await.map_err(|e| ApiError(map_sqlx_err(e)))?;
+    Ok(Json(rows))
+}
+
+#[utoipa::path(
     post,
     path = "/api/v1/finance/expenses",
     request_body = CreateExpenseRequest,
@@ -107,7 +255,7 @@ pub async fn record_expense<S: AppBackendState>(
             description, quantity, unit_cost, total_amount, currency, created_by
         )
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-        RETURNING id, batch_id, farm_id, expense_date, description, quantity, unit_cost, total_amount,
+        RETURNING id, batch_id, farm_id, category_id, expense_date, description, quantity, unit_cost, total_amount,
                   currency::text AS currency, created_at, created_by, updated_at, updated_by
         "#,
     )
@@ -141,6 +289,95 @@ pub async fn record_expense<S: AppBackendState>(
 
     tx.commit().await.map_err(|e| ApiError(map_sqlx_err(e)))?;
     Ok((axum::http::StatusCode::CREATED, Json(row)))
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/v1/finance/sales",
+    responses((status = 200, body = [SaleDto])),
+    tag = "Finance & HPP"
+)]
+pub async fn list_sales<S: AppBackendState>(
+    State(state): State<S>,
+    auth: AuthPrincipal,
+    Query(query): Query<SaleQuery>,
+) -> Result<Json<Vec<SaleDto>>, ApiError> {
+    auth.require(Permission::AnalyticsRead).map_err(ApiError)?;
+    let limit = query.limit.unwrap_or(100).clamp(1, 200);
+    let mut tx = auth
+        .context()
+        .begin_tx(state.pool())
+        .await
+        .map_err(ApiError)?;
+
+    let sale_rows: Vec<SaleRow> = sqlx::query_as(
+        r#"
+        SELECT id, batch_id, sale_date, buyer_name, currency::text AS currency, notes,
+               version, created_at, created_by, updated_at, updated_by
+        FROM sales
+        WHERE organization_id = $1
+          AND ($2::uuid IS NULL OR batch_id = $2)
+        ORDER BY sale_date DESC, created_at DESC
+        LIMIT $3
+        "#,
+    )
+    .bind(auth.organization_id.0)
+    .bind(query.batch_id)
+    .bind(limit)
+    .fetch_all(&mut *tx)
+    .await
+    .map_err(|e| ApiError(map_sqlx_err(e)))?;
+
+    let mut items_by_sale: HashMap<Uuid, Vec<SaleItemDto>> = HashMap::new();
+    if !sale_rows.is_empty() {
+        let sale_ids: Vec<Uuid> = sale_rows.iter().map(|s| s.id).collect();
+        let items: Vec<SaleItemDto> = sqlx::query_as(
+            r#"
+            SELECT id, sale_id, production_output_id, description, quantity, unit, unit_price, line_total
+            FROM sale_items
+            WHERE organization_id = $1 AND sale_id = ANY($2)
+            ORDER BY created_at ASC
+            "#,
+        )
+        .bind(auth.organization_id.0)
+        .bind(&sale_ids)
+        .fetch_all(&mut *tx)
+        .await
+        .map_err(|e| ApiError(map_sqlx_err(e)))?;
+
+        for item in items {
+            items_by_sale.entry(item.sale_id).or_default().push(item);
+        }
+    }
+
+    tx.commit().await.map_err(|e| ApiError(map_sqlx_err(e)))?;
+
+    let out = sale_rows
+        .into_iter()
+        .map(|s| {
+            let items = items_by_sale.remove(&s.id).unwrap_or_default();
+            let total_amount = items
+                .iter()
+                .fold(Decimal::ZERO, |acc, item| acc + item.line_total);
+            SaleDto {
+                id: s.id,
+                batch_id: s.batch_id,
+                sale_date: s.sale_date,
+                buyer_name: s.buyer_name,
+                currency: s.currency,
+                notes: s.notes,
+                total_amount,
+                items,
+                version: s.version,
+                created_at: s.created_at,
+                created_by: s.created_by,
+                updated_at: s.updated_at,
+                updated_by: s.updated_by,
+            }
+        })
+        .collect();
+
+    Ok(Json(out))
 }
 
 #[utoipa::path(
@@ -356,8 +593,18 @@ pub async fn get_batch_financial_summary<S: AppBackendState>(
 
 pub fn router<S: AppBackendState>() -> Router<S> {
     Router::new()
-        .route("/api/v1/finance/expenses", post(record_expense::<S>))
-        .route("/api/v1/finance/sales", post(record_sale::<S>))
+        .route(
+            "/api/v1/finance/expense-categories",
+            get(list_expense_categories::<S>),
+        )
+        .route(
+            "/api/v1/finance/expenses",
+            get(list_expenses::<S>).post(record_expense::<S>),
+        )
+        .route(
+            "/api/v1/finance/sales",
+            get(list_sales::<S>).post(record_sale::<S>),
+        )
         .route(
             "/api/v1/batches/{id}/financial-summary",
             get(get_batch_financial_summary::<S>),
@@ -366,9 +613,18 @@ pub fn router<S: AppBackendState>() -> Router<S> {
 
 #[derive(OpenApi)]
 #[openapi(
-    paths(record_expense, record_sale, get_batch_financial_summary),
+    paths(
+        list_expense_categories,
+        list_expenses,
+        record_expense,
+        list_sales,
+        record_sale,
+        get_batch_financial_summary
+    ),
     components(schemas(
-        CreateExpenseRequest, ExpenseDto, SaleItemInput, CreateSaleRequest, SaleResponse,
+        ExpenseCategoryDto,
+        CreateExpenseRequest, ExpenseDto,
+        SaleItemInput, SaleItemDto, SaleDto, CreateSaleRequest, SaleResponse,
         CostBreakdown, BatchPnlSummary, CalculationResult<BatchPnlSummary>,
         CalculationResult<String>, BatchFinancialSummaryResponse
     ))

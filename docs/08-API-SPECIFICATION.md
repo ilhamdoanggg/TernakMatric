@@ -47,6 +47,8 @@ Seluruh endpoint REST berada di bawah prefix `/api/v1` (kecuali `/health` dan `/
 ### `mod-enclosure` — Kandang, Kolam & Kapasitas
 | Method | Path | Deskripsi |
 | --- | --- | --- |
+| `GET` | `/api/v1/unit-types` | Katalog tipe unit produksi (`water`, `land`, `cage`, `pasture`, `hive`, `other`) |
+| `GET` | `/api/v1/production-systems` | Katalog sistem produksi (`TRADITIONAL`, `INTENSIVE`, `BIOFLOC`, `RAS`, dll.) |
 | `GET` | `/api/v1/enclosures` | Daftar enclosure (`production_units`) per farm |
 | `POST` | `/api/v1/enclosures` | Buat enclosure (kolam/kandang/cage/hive) beserta dimensi/kapasitas |
 | `GET` | `/api/v1/enclosures/{id}` | Detail enclosure + okupansi batch aktif saat ini |
@@ -65,23 +67,27 @@ Seluruh endpoint REST berada di bawah prefix `/api/v1` (kecuali `/health` dan `/
 | Method | Path | Deskripsi |
 | --- | --- | --- |
 | `GET` | `/api/v1/batches` | Daftar batch/cohort produksi |
+| `GET` | `/api/v1/batches/summary` | Daftar ringkasan batch (enclosure aktif, populasi, ABW, ADG, SGR, estimasi biomassa) |
 | `POST` | `/api/v1/batches` | Buat batch baru + assignment enclosure awal (validasi kapasitas) |
-| `GET` | `/api/v1/batches/{id}` | Detail batch beserta populasi & estimasi biomassa terkini |
+| `GET` | `/api/v1/batches/{id}` | Detail batch beserta populasi, pertumbuhan & estimasi biomassa terkini |
 | `PATCH` | `/api/v1/batches/{id}` | Perbarui target/status/catatan batch (mengisi `updated_at`/`updated_by` & `audit_logs`) |
-| `POST` | `/api/v1/batches/{id}/transfer` | Pindahkan batch ke enclosure lain dalam satu transaksi |
+| `POST` | `/api/v1/batches/{id}/transfer` | Pindahkan batch ke enclosure lain dalam satu transaksi *(belum terpasang)* |
 | `POST` | `/api/v1/batches/{id}/stock-movements` | Catat pergerakan populasi (`additional_stock`, `birth`, `purchase`, `cull`, `adjustment`) |
 | `GET` | `/api/v1/batches/{id}/tags` | Daftar tag individu (`individual_tags`) pada batch |
 | `POST` | `/api/v1/batches/{id}/tags` | Daftarkan tag individu baru (eartag/RFID/ring) |
+| `GET` | `/api/v1/batches/{id}/growth-samples` | Daftar riwayat sampling pertumbuhan batch |
 | `POST` | `/api/v1/batches/{id}/growth-samples` | Input sampling pertumbuhan (hitung ABW, ADG, SGR) |
+| `GET` | `/api/v1/batches/{id}/outputs` | Daftar riwayat output produksi batch |
 | `POST` | `/api/v1/batches/{id}/outputs` | Catat output (`meat`, `egg`, `milk`, `fry`, `cull`, `offspring`, `other`) |
 
 ### `mod-feeding` — Pakan, Gudang & Kalkulator FCR
 | Method | Path | Deskripsi |
 | --- | --- | --- |
-| `GET` | `/api/v1/warehouses` | Daftar gudang & saldo pakan (`inventory_balances`) |
+| `GET` | `/api/v1/warehouses` | Daftar gudang organisasi |
 | `POST` | `/api/v1/warehouses` | Buat gudang baru |
 | `GET` | `/api/v1/feed-products` | Daftar SKU pakan/ransum & konversi satuan |
 | `POST` | `/api/v1/feed-products` | Tambah SKU pakan/ransum |
+| `GET` | `/api/v1/inventory/balances` | Saldo stok gudang per produk & `lot_code` (`inventory_balances`) |
 | `POST` | `/api/v1/inventory/transactions` | Catat transaksi gudang (`receipt`, `issue`, `transfer`, `adjustment`, `return`) |
 | `POST` | `/api/v1/feeding` | Catat pemberian pakan ke batch (atomik memotong gudang + hitung FCR) |
 | `GET` | `/api/v1/batches/{id}/fcr` | Hitung Biological FCR & Economic FCR batch |
@@ -100,14 +106,19 @@ Seluruh endpoint REST berada di bawah prefix `/api/v1` (kecuali `/health` dan `/
 | `GET` | `/api/v1/batches/{id}/vaccinations` | Daftar jadwal vaksinasi batch |
 | `POST` | `/api/v1/batches/{id}/vaccinations` | Buat jadwal vaksinasi baru |
 | `PATCH` | `/api/v1/vaccinations/{id}` | Perbarui status vaksinasi (mengisi `updated_at`/`updated_by` & `audit_logs`) |
+| `GET` | `/api/v1/batches/{id}/health-records` | Daftar riwayat observasi penyakit & pengobatan batch |
 | `POST` | `/api/v1/batches/{id}/health-records` | Catat observasi penyakit atau pengobatan |
+| `GET` | `/api/v1/batches/{id}/mortalities` | Daftar riwayat mortalitas batch |
 | `POST` | `/api/v1/batches/{id}/mortalities` | Catat mortalitas (atomik mengurangi `population_balances`) |
 | `POST` | `/api/v1/farms/{id}/biosecurity-logs` | Catat log biosecurity (sanitasi, karantina, tamu/kendaraan) |
 
 ### `mod-finance` — Biaya, Penjualan, HPP & P&L
 | Method | Path | Deskripsi |
 | --- | --- | --- |
+| `GET` | `/api/v1/finance/expense-categories` | Katalog kategori biaya sistem & custom organisasi |
+| `GET` | `/api/v1/finance/expenses` | Daftar biaya operasional/langsung (filter `batch_id`, `farm_id`, `category_id`) |
 | `POST` | `/api/v1/finance/expenses` | Catat biaya operasional/langsung ke batch atau farm |
+| `GET` | `/api/v1/finance/sales` | Daftar transaksi penjualan beserta item line-nya |
 | `POST` | `/api/v1/finance/sales` | Catat transaksi penjualan terkait `production_outputs` |
 | `GET` | `/api/v1/batches/{id}/financial-summary` | Hitung total biaya, pendapatan, HPP per kg hidup/output, dan Laba/Rugi |
 

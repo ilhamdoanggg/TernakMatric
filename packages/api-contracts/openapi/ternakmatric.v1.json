@@ -163,7 +163,70 @@
         }
       }
     },
+    "/api/v1/batches/summary": {
+      "get": {
+        "tags": [
+          "Production"
+        ],
+        "operationId": "list_batch_summaries",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BatchDetailDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/batches/{id}": {
+      "get": {
+        "tags": [
+          "Production"
+        ],
+        "operationId": "get_batch",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Batch ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchDetailDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
       "patch": {
         "tags": [
           "Production"
@@ -270,6 +333,39 @@
       }
     },
     "/api/v1/batches/{id}/growth-samples": {
+      "get": {
+        "tags": [
+          "Production"
+        ],
+        "operationId": "list_growth_samples",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Batch ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GrowthSampleDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
       "post": {
         "tags": [
           "Production"
@@ -312,6 +408,39 @@
       }
     },
     "/api/v1/batches/{id}/health-records": {
+      "get": {
+        "tags": [
+          "Health & Biosecurity"
+        ],
+        "operationId": "list_health_records",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Batch ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/HealthRecordDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
       "post": {
         "tags": [
           "Health & Biosecurity"
@@ -354,6 +483,39 @@
       }
     },
     "/api/v1/batches/{id}/mortalities": {
+      "get": {
+        "tags": [
+          "Health & Biosecurity"
+        ],
+        "operationId": "list_mortalities",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Batch ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MortalityRecordDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
       "post": {
         "tags": [
           "Health & Biosecurity"
@@ -396,6 +558,39 @@
       }
     },
     "/api/v1/batches/{id}/outputs": {
+      "get": {
+        "tags": [
+          "Production"
+        ],
+        "operationId": "list_outputs",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Batch ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProductionOutputDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
       "post": {
         "tags": [
           "Production"
@@ -1128,7 +1323,51 @@
         }
       }
     },
+    "/api/v1/finance/expense-categories": {
+      "get": {
+        "tags": [
+          "Finance & HPP"
+        ],
+        "operationId": "list_expense_categories",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ExpenseCategoryDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/finance/expenses": {
+      "get": {
+        "tags": [
+          "Finance & HPP"
+        ],
+        "operationId": "list_expenses",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ExpenseDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
       "post": {
         "tags": [
           "Finance & HPP"
@@ -1159,6 +1398,27 @@
       }
     },
     "/api/v1/finance/sales": {
+      "get": {
+        "tags": [
+          "Finance & HPP"
+        ],
+        "operationId": "list_sales",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SaleDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
       "post": {
         "tags": [
           "Finance & HPP"
@@ -1181,6 +1441,29 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SaleResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inventory/balances": {
+      "get": {
+        "tags": [
+          "Feeding & Inventory"
+        ],
+        "operationId": "list_inventory_balances",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/InventoryBalanceDto"
+                  }
                 }
               }
             }
@@ -1337,6 +1620,29 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/MemberDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/production-systems": {
+      "get": {
+        "tags": [
+          "Enclosure"
+        ],
+        "operationId": "list_production_systems",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProductionSystemDto"
+                  }
                 }
               }
             }
@@ -1573,6 +1879,29 @@
         }
       }
     },
+    "/api/v1/unit-types": {
+      "get": {
+        "tags": [
+          "Enclosure"
+        ],
+        "operationId": "list_unit_types",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UnitTypeDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/vaccinations/{id}": {
       "patch": {
         "tags": [
@@ -1764,6 +2093,148 @@
           "user_id": {
             "type": "string",
             "format": "uuid"
+          }
+        }
+      },
+      "BatchDetailDto": {
+        "type": "object",
+        "required": [
+          "id",
+          "organization_id",
+          "batch_code",
+          "species_id",
+          "start_date",
+          "initial_count",
+          "status",
+          "version",
+          "created_at",
+          "updated_at",
+          "current_population"
+        ],
+        "properties": {
+          "active_enclosure_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "adg_g_per_day": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "batch_code": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "created_by": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "current_population": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "estimated_biomass": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/CalculationResult_String"
+              }
+            ]
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "initial_avg_weight_g": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "initial_count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "latest_abw_g": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "latest_sampled_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "organization_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "production_profile_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "sgr_percent_per_day": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "species_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "start_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "status": {
+            "type": "string"
+          },
+          "target_end_date": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_by": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int32"
           }
         }
       },
@@ -3320,6 +3791,61 @@
           }
         }
       },
+      "ExpenseCategoryDto": {
+        "type": "object",
+        "required": [
+          "id",
+          "code",
+          "name",
+          "is_system",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "created_by": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "is_system": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          },
+          "organization_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_by": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          }
+        }
+      },
       "ExpenseDto": {
         "type": "object",
         "required": [
@@ -3335,6 +3861,13 @@
         ],
         "properties": {
           "batch_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "category_id": {
             "type": [
               "string",
               "null"
@@ -3609,6 +4142,90 @@
           }
         }
       },
+      "GrowthSampleDto": {
+        "type": "object",
+        "required": [
+          "id",
+          "batch_id",
+          "sampled_at",
+          "sample_count",
+          "total_sample_weight_g",
+          "version",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "average_length_cm": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "average_weight_g": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "batch_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "created_by": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "method": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sample_count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sampled_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "total_sample_weight_g": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_by": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
       "GrowthSampleResponse": {
         "type": "object",
         "required": [
@@ -3813,6 +4430,68 @@
           }
         }
       },
+      "InventoryBalanceDto": {
+        "type": "object",
+        "required": [
+          "warehouse_id",
+          "warehouse_code",
+          "warehouse_name",
+          "feed_product_id",
+          "product_sku",
+          "product_name",
+          "default_unit",
+          "lot_code",
+          "quantity",
+          "version",
+          "updated_at"
+        ],
+        "properties": {
+          "default_unit": {
+            "type": "string"
+          },
+          "feed_product_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "lot_code": {
+            "type": "string"
+          },
+          "product_name": {
+            "type": "string"
+          },
+          "product_sku": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_by": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "warehouse_code": {
+            "type": "string"
+          },
+          "warehouse_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "warehouse_name": {
+            "type": "string"
+          }
+        }
+      },
       "InventoryLineInput": {
         "type": "object",
         "required": [
@@ -3984,6 +4663,81 @@
           "user_id": {
             "type": "string",
             "format": "uuid"
+          }
+        }
+      },
+      "MortalityRecordDto": {
+        "type": "object",
+        "required": [
+          "id",
+          "batch_id",
+          "quantity",
+          "occurred_at",
+          "version",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "batch_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "created_by": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "occurred_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "quantity": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "stock_movement_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "suspected_cause": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_by": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int32"
           }
         }
       },
@@ -4180,6 +4934,120 @@
           "offspring",
           "other"
         ]
+      },
+      "ProductionOutputDto": {
+        "type": "object",
+        "required": [
+          "id",
+          "batch_id",
+          "occurred_at",
+          "output_type",
+          "quantity",
+          "unit",
+          "version",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "average_weight_g": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "batch_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "created_by": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "grade": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "occurred_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "output_type": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "string"
+          },
+          "stock_movement_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "unit": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_by": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "ProductionSystemDto": {
+        "type": "object",
+        "required": [
+          "id",
+          "code",
+          "name"
+        ],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
       },
       "RecordFeedingRequest": {
         "type": "object",
@@ -4404,6 +5272,128 @@
               "string",
               "null"
             ]
+          }
+        }
+      },
+      "SaleDto": {
+        "type": "object",
+        "required": [
+          "id",
+          "batch_id",
+          "sale_date",
+          "currency",
+          "total_amount",
+          "items",
+          "version",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "batch_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "buyer_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "created_by": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SaleItemDto"
+            }
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sale_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "total_amount": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_by": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "SaleItemDto": {
+        "type": "object",
+        "required": [
+          "id",
+          "sale_id",
+          "description",
+          "quantity",
+          "unit",
+          "unit_price",
+          "line_total"
+        ],
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "line_total": {
+            "type": "string"
+          },
+          "production_output_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "quantity": {
+            "type": "string"
+          },
+          "sale_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "unit": {
+            "type": "string"
+          },
+          "unit_price": {
+            "type": "string"
           }
         }
       },
@@ -4905,6 +5895,36 @@
           "rejected",
           "conflict"
         ]
+      },
+      "UnitTypeDto": {
+        "type": "object",
+        "required": [
+          "id",
+          "code",
+          "name",
+          "habitat"
+        ],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "habitat": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
       },
       "UpdateBatchRequest": {
         "type": "object",

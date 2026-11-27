@@ -1,4 +1,4 @@
-use axum::extract::{Path, State};
+use axum::extract::{Path, Query, State};
 use axum::routing::{get, patch, post};
 use axum::{Json, Router};
 use chrono::{DateTime, NaiveDate, Utc};
@@ -63,6 +63,27 @@ pub struct HealthRecordDto {
     pub treatment_product: Option<String>,
     pub dosage: Option<String>,
     pub withdrawal_days: Option<i32>,
+    pub created_at: DateTime<Utc>,
+    pub created_by: Option<Uuid>,
+    pub updated_at: DateTime<Utc>,
+    pub updated_by: Option<Uuid>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct HealthListQuery {
+    pub limit: Option<i64>,
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema, sqlx::FromRow)]
+pub struct MortalityRecordDto {
+    pub id: Uuid,
+    pub batch_id: Uuid,
+    pub stock_movement_id: Option<Uuid>,
+    pub quantity: i32,
+    pub occurred_at: DateTime<Utc>,
+    pub suspected_cause: Option<String>,
+    pub notes: Option<String>,
+    pub version: i32,
     pub created_at: DateTime<Utc>,
     pub created_by: Option<Uuid>,
     pub updated_at: DateTime<Utc>,
@@ -283,6 +304,45 @@ pub async fn update_vaccination_status<S: AppBackendState>(
 }
 
 #[utoipa::path(
+    get,
+    path = "/api/v1/batches/{id}/health-records",
+    params(("id" = Uuid, Path, description = "Batch ID")),
+    responses((status = 200, body = [HealthRecordDto])),
+    tag = "Health & Biosecurity"
+)]
+pub async fn list_health_records<S: AppBackendState>(
+    State(state): State<S>,
+    auth: AuthPrincipal,
+    Path(batch_id): Path<Uuid>,
+    Query(query): Query<HealthListQuery>,
+) -> Result<Json<Vec<HealthRecordDto>>, ApiError> {
+    let limit = query.limit.unwrap_or(100).clamp(1, 200);
+    let mut tx = auth
+        .context()
+        .begin_tx(state.pool())
+        .await
+        .map_err(ApiError)?;
+    let rows: Vec<HealthRecordDto> = sqlx::query_as(
+        r#"
+        SELECT id, batch_id, observed_at, category, description, treatment_product, dosage, withdrawal_days,
+               created_at, created_by, updated_at, updated_by
+        FROM health_records
+        WHERE organization_id = $1 AND batch_id = $2
+        ORDER BY observed_at DESC, created_at DESC
+        LIMIT $3
+        "#,
+    )
+    .bind(auth.organization_id.0)
+    .bind(batch_id)
+    .bind(limit)
+    .fetch_all(&mut *tx)
+    .await
+    .map_err(|e| ApiError(map_sqlx_err(e)))?;
+    tx.commit().await.map_err(|e| ApiError(map_sqlx_err(e)))?;
+    Ok(Json(rows))
+}
+
+#[utoipa::path(
     post,
     path = "/api/v1/batches/{id}/health-records",
     params(("id" = Uuid, Path, description = "Batch ID")),
@@ -340,6 +400,45 @@ pub async fn record_health_event<S: AppBackendState>(
 
     tx.commit().await.map_err(|e| ApiError(map_sqlx_err(e)))?;
     Ok((axum::http::StatusCode::CREATED, Json(row)))
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/v1/batches/{id}/mortalities",
+    params(("id" = Uuid, Path, description = "Batch ID")),
+    responses((status = 200, body = [MortalityRecordDto])),
+    tag = "Health & Biosecurity"
+)]
+pub async fn list_mortalities<S: AppBackendState>(
+    State(state): State<S>,
+    auth: AuthPrincipal,
+    Path(batch_id): Path<Uuid>,
+    Query(query): Query<HealthListQuery>,
+) -> Result<Json<Vec<MortalityRecordDto>>, ApiError> {
+    let limit = query.limit.unwrap_or(100).clamp(1, 200);
+    let mut tx = auth
+        .context()
+        .begin_tx(state.pool())
+        .await
+        .map_err(ApiError)?;
+    let rows: Vec<MortalityRecordDto> = sqlx::query_as(
+        r#"
+        SELECT id, batch_id, stock_movement_id, quantity, occurred_at, suspected_cause, notes,
+               version, created_at, created_by, updated_at, updated_by
+        FROM mortality_records
+        WHERE organization_id = $1 AND batch_id = $2
+        ORDER BY occurred_at DESC, created_at DESC
+        LIMIT $3
+        "#,
+    )
+    .bind(auth.organization_id.0)
+    .bind(batch_id)
+    .bind(limit)
+    .fetch_all(&mut *tx)
+    .await
+    .map_err(|e| ApiError(map_sqlx_err(e)))?;
+    tx.commit().await.map_err(|e| ApiError(map_sqlx_err(e)))?;
+    Ok(Json(rows))
 }
 
 #[utoipa::path(
@@ -538,11 +637,11 @@ pub fn router<S: AppBackendState>() -> Router<S> {
         )
         .route(
             "/api/v1/batches/{id}/health-records",
-            post(record_health_event::<S>),
+            get(list_health_records::<S>).post(record_health_event::<S>),
         )
         .route(
             "/api/v1/batches/{id}/mortalities",
-            post(record_mortality::<S>),
+            get(list_mortalities::<S>).post(record_mortality::<S>),
         )
         .route(
             "/api/v1/farms/{id}/biosecurity-logs",
@@ -556,7 +655,9 @@ pub fn router<S: AppBackendState>() -> Router<S> {
         list_vaccinations,
         schedule_vaccination,
         update_vaccination_status,
+        list_health_records,
         record_health_event,
+        list_mortalities,
         record_mortality,
         record_biosecurity_log
     ),
@@ -566,6 +667,7 @@ pub fn router<S: AppBackendState>() -> Router<S> {
         VaccinationScheduleDto,
         CreateHealthRecordRequest,
         HealthRecordDto,
+        MortalityRecordDto,
         RecordMortalityRequest,
         MortalityResponse,
         CreateBiosecurityLogRequest,
